@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import type { Project, StrategicPlan, PlatformForecast, QuarterlyBusinessPlan, WeeklyPerformancePoint } from '../types';
+import type { Project, StrategicPlan, PlatformForecast, QuarterlyBusinessPlan, WeeklyPerformancePoint, ChangeLogEntry } from '../types';
 import { getStrategicPlan } from '../services/geminiService';
 import { Loader } from './Loader';
 import { ForecastDisplay } from './ForecastDisplay';
@@ -8,7 +8,7 @@ import { ForecastingSimulator } from './ForecastingSimulator';
 import { QuarterlyPlan } from './QuarterlyPlan';
 import { PerformanceTracker } from './PerformanceTracker';
 import { WeeklyPlanning } from './WeeklyPlanning';
-import { WandIcon } from './Icons';
+import { WandIcon, ClockIcon, XCircleIcon } from './Icons';
 
 interface ProjectDeepDiveViewProps {
   project: Project;
@@ -33,6 +33,9 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<StrategicPlan | null>(null);
+
+  // Log State
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   
   useEffect(() => {
     // When project prop changes, sync state, but maintain tab if reasonable or reset
@@ -44,6 +47,13 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
     setForecastPlan(null); 
     setPlan(null); 
   }, [project]);
+
+  const createLogEntry = (description: string): ChangeLogEntry => ({
+      id: Date.now().toString(),
+      date: new Date().toLocaleString(),
+      description,
+      user: 'User' // Can be dynamic if auth is added
+  });
 
   const handleCommitForecast = (forecast: PlatformForecast[]) => {
       const totals = forecast.reduce((acc, p) => ({
@@ -69,7 +79,8 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
       // Persist to App State
       onUpdateProject({
         ...project,
-        performanceData: newPerformanceData
+        performanceData: newPerformanceData,
+        changeLogs: [createLogEntry("Committed new forecast to Performance Tracker"), ...project.changeLogs]
       });
 
       setActiveTab('performance');
@@ -81,7 +92,8 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
     // Persist to App State
     onUpdateProject({
         ...project,
-        quarterlyBusinessPlan: newPlan
+        quarterlyBusinessPlan: newPlan,
+        changeLogs: [createLogEntry("Updated Quarterly Strategic Plan"), ...project.changeLogs]
     });
   };
 
@@ -90,7 +102,8 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
       // Persist to App State
       onUpdateProject({
           ...project,
-          performanceData: newData
+          performanceData: newData,
+          changeLogs: [createLogEntry("Updated Weekly Plan & Distribution"), ...project.changeLogs]
       });
       setActiveTab('performance');
   };
@@ -109,6 +122,7 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
           onUpdateProject({
               ...project,
               performanceData: newData
+              // Note: We don't log every cell edit to avoid spamming logs
           });
       }
   };
@@ -137,6 +151,17 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
 
   return (
     <div className="space-y-6">
+        {/* Header Actions (Logs) */}
+        <div className="flex justify-end px-4 md:px-0">
+            <button 
+                onClick={() => setIsLogModalOpen(true)}
+                className="flex items-center text-sm font-medium text-text-secondary hover:text-brand-secondary transition-colors"
+            >
+                <ClockIcon className="w-4 h-4 mr-2" />
+                View Change Logs
+            </button>
+        </div>
+
         {/* Navigation Tabs - Scrollable on mobile */}
         <div className="sticky top-[60px] z-40 bg-background/95 backdrop-blur-xl pt-2 pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:bg-transparent border-b border-slate-800 md:border-none">
             <div className="flex overflow-x-auto space-x-1 bg-slate-800/50 p-1 rounded-lg w-full md:w-fit no-scrollbar snap-x snap-mandatory">
@@ -245,6 +270,39 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
                 </div>
             )}
         </div>
+
+        {/* LOGS MODAL */}
+        {isLogModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
+                <div className="bg-surface rounded-xl shadow-2xl w-full max-w-lg border border-slate-600 animate-slideUp flex flex-col max-h-[80vh]">
+                    <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800/50 rounded-t-xl">
+                        <h3 className="text-lg font-bold text-brand-light flex items-center">
+                            <ClockIcon className="w-5 h-5 mr-2 text-brand-secondary" /> Change Logs
+                        </h3>
+                        <button onClick={() => setIsLogModalOpen(false)} className="text-text-secondary hover:text-white transition-colors">
+                            <XCircleIcon className="w-6 h-6" />
+                        </button>
+                    </div>
+                    <div className="p-4 overflow-y-auto flex-1 custom-scrollbar space-y-4">
+                        {project.changeLogs && project.changeLogs.length > 0 ? (
+                            project.changeLogs.map((log) => (
+                                <div key={log.id} className="flex items-start space-x-3 border-b border-slate-700/50 pb-3 last:border-0">
+                                    <div className="mt-1 bg-brand-secondary/20 p-1.5 rounded-full">
+                                        <ClockIcon className="w-3 h-3 text-brand-secondary" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-white font-medium">{log.description}</p>
+                                        <p className="text-xs text-text-secondary mt-0.5">{log.date}</p>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-8 text-text-secondary italic">No changes recorded yet.</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 };

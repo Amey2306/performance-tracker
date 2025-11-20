@@ -67,6 +67,14 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
         setWeeks(updated);
     };
 
+    // Helper to check if week is in the past
+    const isWeekLocked = (endDateStr: string) => {
+        const today = new Date();
+        const end = new Date(endDateStr);
+        // If end date is before today, it's in the past
+        return end < today;
+    };
+
     // --- Calculations ---
     const calculatedData = useMemo(() => {
         let cumLeads = 0;
@@ -99,7 +107,8 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
                 cAP: cumAP,
                 cAD: cumAD,
                 cSpends: cumSpends,
-                cAllIn: cumAllIn
+                cAllIn: cumAllIn,
+                isLocked: isWeekLocked(week.endDate)
             };
         });
     }, [weeks, quarterlyPlan]);
@@ -143,14 +152,20 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
                 {isInput && <PencilIcon className="w-3 h-3 text-text-secondary" />}
             </td>
             {calculatedData.map((w, i) => (
-                <td key={w.id} className={`p-2 text-right border-r border-slate-700/50 ${w.spendFactor === 0 ? 'opacity-30' : ''}`}>
+                <td key={w.id} className={`p-2 text-right border-r border-slate-700/50 ${w.spendFactor === 0 ? 'opacity-30' : ''} ${w.isLocked && isInput ? 'bg-slate-900/50 cursor-not-allowed' : ''}`}>
                     {isInput && inputField ? (
-                        <input 
-                            type="number" 
-                            value={isInput ? (Math.round((w[inputField] as number) * 100) / 100) : 0}
-                            onChange={(e) => handleWeekChange(i, inputField, parseFloat(e.target.value))}
-                            className="w-full text-right bg-transparent font-bold focus:outline-none hover:bg-slate-700/50 rounded px-1 transition-colors focus:text-brand-primary"
-                        />
+                        w.isLocked ? (
+                            <span className="text-slate-500 cursor-not-allowed" title="Past week locked">
+                                {Math.round((w[inputField] as number) * 100) / 100}%
+                            </span>
+                        ) : (
+                            <input 
+                                type="number" 
+                                value={isInput ? (Math.round((w[inputField] as number) * 100) / 100) : 0}
+                                onChange={(e) => handleWeekChange(i, inputField, parseFloat(e.target.value))}
+                                className="w-full text-right bg-transparent font-bold focus:outline-none hover:bg-slate-700/50 rounded px-1 transition-colors focus:text-brand-primary"
+                            />
+                        )
                     ) : (
                         <span className={isInput ? 'font-bold' : ''}>
                             {/* @ts-ignore */}
@@ -186,7 +201,7 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
                     <div>
                         <h3 className="text-xl font-bold text-brand-light">Week-on-Week (WOW) Planning</h3>
                         <p className="text-text-secondary text-xs mt-1">
-                            Configure weekly distribution. Dates auto-align to Monday-Sunday.
+                            Configure weekly distribution. Dates auto-align to Monday-Sunday. <span className="text-brand-secondary">Past weeks are locked.</span>
                         </p>
                     </div>
                     <div className="flex items-center gap-3 bg-background p-2 rounded border border-slate-700 shadow-inner">
@@ -206,9 +221,11 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
                             <tr>
                                 <th className="sticky left-0 z-20 bg-slate-900 p-3 text-left min-w-[140px] border-r border-slate-700 shadow-[4px_0_10px_rgba(0,0,0,0.3)]">WOW Metrics</th>
                                 {calculatedData.map((w, i) => (
-                                    <th key={w.id} className={`p-2 min-w-[90px] text-center border-r border-slate-700/50 ${w.spendFactor === 0 ? 'opacity-50' : ''}`}>
+                                    <th key={w.id} className={`p-2 min-w-[90px] text-center border-r border-slate-700/50 ${w.spendFactor === 0 ? 'opacity-50' : ''} ${w.isLocked ? 'bg-slate-800/50' : ''}`}>
                                         <div className="text-[10px] uppercase tracking-wider text-text-secondary">{w.startDate.slice(8)} - {w.endDate.slice(8)}</div>
-                                        <div className="text-brand-light font-bold">{w.endDate.slice(5,7) === w.startDate.slice(5,7) ? w.startDate.toLocaleString('default', {month:'short'}) : 'Month'}</div>
+                                        <div className={`font-bold ${w.isLocked ? 'text-slate-500' : 'text-brand-light'}`}>
+                                            {w.endDate.slice(5,7) === w.startDate.slice(5,7) ? w.startDate.toLocaleString('default', {month:'short'}) : 'Month'}
+                                        </div>
                                     </th>
                                 ))}
                                 <th className="p-3 min-w-[100px] bg-slate-900 text-white text-center">Total</th>
@@ -249,13 +266,17 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
                                     <PencilIcon className="w-3 h-3 text-text-secondary" />
                                 </td>
                                 {calculatedData.map((w, i) => (
-                                    <td key={w.id} className="p-2 text-center border-r border-slate-700/50">
-                                        <input 
-                                            type="number" 
-                                            value={w.spendFactor} 
-                                            onChange={(e) => handleWeekChange(i, 'spendFactor', parseFloat(e.target.value))}
-                                            className="w-full text-center bg-transparent font-bold text-white focus:outline-none hover:bg-slate-700/50 rounded px-1 transition-colors"
-                                        />
+                                    <td key={w.id} className={`p-2 text-center border-r border-slate-700/50 ${w.isLocked ? 'bg-slate-900/50 cursor-not-allowed' : ''}`}>
+                                        {w.isLocked ? (
+                                            <span className="text-slate-500">{w.spendFactor}</span>
+                                        ) : (
+                                            <input 
+                                                type="number" 
+                                                value={w.spendFactor} 
+                                                onChange={(e) => handleWeekChange(i, 'spendFactor', parseFloat(e.target.value))}
+                                                className="w-full text-center bg-transparent font-bold text-white focus:outline-none hover:bg-slate-700/50 rounded px-1 transition-colors"
+                                            />
+                                        )}
                                     </td>
                                 ))}
                                 <td></td>
