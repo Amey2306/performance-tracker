@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import type { StrategicPlan, Project, PlatformForecast } from '../types';
 
@@ -48,7 +49,7 @@ const strategicPlanSchema = {
                     projectedAppointments: { type: Type.INTEGER },
                     projectedCPL: { type: Type.NUMBER },
                     projectedCPA: { type: Type.NUMBER },
-                    recommendation: { type: Type.STRING, description: "This is the most important part. Act as a consultant. Analyze the user's choice for this platform. Is their projected CPL realistic compared to historical data? Is the budget allocation wise? Provide brief, insightful, actionable commentary and advice on their plan for this specific platform." }
+                    recommendation: { type: Type.STRING, description: "Detailed strategic advice." }
                 },
                 required: ["platformName", "recommendedBudget", "projectedLeads", "projectedAppointments", "projectedCPL", "projectedCPA", "recommendation"]
             }
@@ -65,47 +66,42 @@ export const getStrategicPlan = async (project: Project, options: PlanOptions, i
   const { forecastPlan } = options;
   const totalForecastBudget = forecastPlan.reduce((sum, p) => sum + p.spends, 0);
 
+  // Extract Business Goals for context
+  const { overallBV, ats, digitalUnitsTarget, targetCPL } = project.quarterlyBusinessPlan;
+
   const prompt = `
-    You are an expert Performance Marketing Analyst and Consultant. Your task is to analyze the historical campaign data for the project "${project.name}" and provide expert feedback on the user-generated forecast for the upcoming week.
+    You are a Senior Performance Marketing Director. Review the campaign plan for "${project.name}".
 
-    **Historical Performance Tracker Data (Week-over-Week):**
-    This data shows weekly targets, cumulative targets, weekly achieved, and cumulative achieved values.
+    **Business Goals (Quarterly):**
+    - Overall Business Value Target: ${overallBV} Cr
+    - ATS (Avg Ticket Size): ${ats} Cr
+    - Digital Units Target: ${digitalUnitsTarget} Units
+    - Target CPL: ₹${targetCPL}
+
+    **Historical Performance (Week-over-Week):**
     \`\`\`json
-    ${JSON.stringify(project.performanceData, null, 2)}
+    ${JSON.stringify(project.performanceData.slice(-4), null, 2)} 
     \`\`\`
+    (Only showing last 4 weeks for brevity)
 
-    **Initial Quarterly Platform-level Plan:**
-    This was the original strategic plan for each platform. Use this as a baseline for what was initially intended.
-    \`\`\`json
-    ${JSON.stringify(project.quarterlyPlatformPlan, null, 2)}
-    \`\`\`
-
-    **User's Forecast for Next Week:**
-    The user has created the following forecast. You need to analyze it.
+    **User's Proposed Media Plan for Next Week:**
     \`\`\`json
     ${JSON.stringify(forecastPlan.map(p => ({
-        platformName: p.name,
+        platform: p.name,
         budget: p.spends,
-        projectedCPL: p.cpl,
-        projectedLeads: p.leads,
-        projectedAppointments: p.projectedAppointments
+        cpl: p.cpl,
+        leads: p.leads,
+        appointments: p.projectedAppointments,
+        walkins: p.projectedWalkins
     })), null, 2)}
     \`\`\`
 
-    **Your Task:**
-    Generate a JSON response that follows the schema.
+    **Task:**
+    1.  **Analyze Alignment:** Does this media plan put the project on track to hit the ${digitalUnitsTarget} Unit target? Consider the full funnel (Leads -> Appointments -> Walkins).
+    2.  **Feasibility Check:** Is the CPL realistic given recent history? Are the conversion rates (Leads to AP, AP to AD) in the forecast optimistic or conservative compared to the Business Plan ratios?
+    3.  **Recommendations:** Provide specific tactical advice per platform. If they are spending too much on a low-performing channel, call it out.
 
-    1.  **Performance Summary:** Write a brief summary analyzing the historical trends from the performance tracker. Are spends increasing? Is CPL improving or worsening? Are they consistently hitting targets?
-    2.  **Gap Analysis:** Based on the **most recent week's data** from the performance tracker, compare the 'target' vs. 'achieved' metrics for Leads, Spends, and Appointments. Calculate the gap and assign a status.
-    3.  **Next Week's Forecast Summary:** Summarize the user's plan. The 'requiredBudget' in your response MUST be ${totalForecastBudget}. The projected leads and appointments must also match the totals from the user's plan.
-    4.  **Platform-Specific Strategic Plan Analysis (CRITICAL):**
-        *   For each platform in the user's forecast, you MUST take their numbers (budget, leads, appointments) directly.
-        *   Your main job is to write the **recommendation**. Act as a senior consultant reviewing this plan.
-        *   **Analyze Feasibility:** Is the projected CPL for a platform realistic given its historical performance (you can derive historical CPL from the weekly tracker data)? For example, if Google Search has a historical CPL of ₹9,000, and the user forecasts a CPL of ₹2,000, you must flag this as highly optimistic and explain why.
-        *   **Strategic Allocation:** Does the budget allocation make sense? Are they over-investing in underperforming channels or starving proven winners?
-        *   **Provide Actionable Advice:** Give specific, actionable advice for each platform. Example: "The projected CPL of ₹4,200 for Google Search is aggressive compared to the recent average of ₹9,168. To achieve this, consider focusing on high-intent keywords and optimizing landing pages." or "Allocating 40% of the budget to Meta PP is a sound strategy given its consistent performance and lower CPL."
-
-    Your response MUST be a single JSON object that adheres strictly to the provided schema. The values for budget, leads, and appointments in the platform plan MUST be the same as the user's input. Your unique contribution is the analysis and the 'recommendation' text.
+    Return the response strictly in JSON following the schema.
   `;
 
   const modelConfig = isThinkingMode 
@@ -124,32 +120,10 @@ export const getStrategicPlan = async (project: Project, options: PlanOptions, i
     });
 
     const jsonText = response.text.trim();
-    const parsedPlan = JSON.parse(jsonText) as StrategicPlan;
-
-    // Ensure the AI hasn't hallucinated different numbers for the plan
-    // Merge the AI's recommendation with the user's plan to be safe
-    parsedPlan.platformSpecificPlan = parsedPlan.platformSpecificPlan.map(aiPlanItem => {
-        const userPlanItem = forecastPlan.find(p => p.name === aiPlanItem.platformName);
-        const projectedCPA = userPlanItem?.projectedAppointments && userPlanItem.projectedAppointments > 0 
-            ? (userPlanItem.spends / userPlanItem.projectedAppointments) 
-            : 0;
-        return {
-            ...aiPlanItem, // This has the AI's recommendation
-            recommendedBudget: userPlanItem?.spends ?? 0,
-            projectedLeads: userPlanItem?.leads ?? 0,
-            projectedAppointments: userPlanItem?.projectedAppointments ?? 0,
-            projectedCPL: userPlanItem?.cpl ?? 0,
-            projectedCPA: projectedCPA,
-        };
-    });
-
-    return parsedPlan;
+    return JSON.parse(jsonText) as StrategicPlan;
 
   } catch (error) {
     console.error("Error calling Gemini API:", error);
-    if (error instanceof Error) {
-        throw new Error(`Failed to get strategic plan from AI: ${error.message}`);
-    }
-    throw new Error("An unknown error occurred while fetching the strategic plan.");
+    throw new Error("Failed to generate strategic plan.");
   }
 };

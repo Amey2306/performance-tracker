@@ -1,63 +1,80 @@
+
 export interface PerformanceMetrics {
     leads: number;
-    appointments: number; // AP
-    walkins: number; // AD (Actual Demonstrations)
+    appointments: number; // AP (Site Visits Done)
+    walkins: number; // AD (Actual Demonstrations/Walkins)
     spends: number;
+    allInSpends?: number; // New: Including Tax
 }
 
-// A single week's data point, mirroring the structure of the performance tracker
 export interface WeeklyPerformancePoint {
-    week: string;
+    startDate: string;
+    endDate: string;
+    weekLabel: string; // e.g., "Week 1"
     targets: PerformanceMetrics;
-    cumulativeTargets: PerformanceMetrics;
     achieved: PerformanceMetrics;
-    cumulativeAchieved: PerformanceMetrics;
+    // Cumulative values are calculated on the fly or stored for caching
+    cumulativeTargets?: PerformanceMetrics;
+    cumulativeAchieved?: PerformanceMetrics;
+}
+
+export interface QuarterlyBusinessPlan {
+    overallBV: number; // Business Value in Cr
+    digitalContributionPercent: number; // e.g., 12.5
+    ats: number; // Avg Ticket Size in Cr
+    
+    // Conversion Ratios (in %)
+    walkinToBookingRatio: number; // WTB
+    leadToWalkinRatio: number; // LTW
+    
+    // Cost Assumptions
+    targetCPL: number;
+    
+    // Computed Targets (Quarterly Totals)
+    digitalUnitsTarget: number;
+    walkinsTarget: number; // AD
+    leadsTarget: number;
+    totalBudget: number;
 }
 
 export interface PlatformPerformance {
     name: string;
     spends: number;
     leads: number;
-    appointments: number;
+    appointments: number; // AP
+    walkins: number; // AD
 }
 
-// Represents the initial plan for a platform for the quarter
-export interface PlatformPlanTarget {
+// Represents the detailed forecast for a specific platform for a specific week
+export interface PlatformForecast {
+    id: string;
     name: string;
-    budgetPercent: number; // e.g., 8 for 8%
-    targetCPL: number;
-    leads: number;
     spends: number;
-    walkins: number;
-    capi: number; // Forecasted appointments
-    capiToAp: number; // Capi to AP conversion rate
-    apToAd: number; // AP to AD conversion rate
+    cpl: number;
+    leads: number;
+    
+    // Funnel Rates
+    leadToCapiPercent: number; // % of leads that become "Connects/Appointments Proposed"
+    capiToApPercent: number; // % of Capi that become AP (Site Visits)
+    apToAdPercent: number; // % of AP that become AD (Walkins)
+    
+    // Calculated Downstream
+    projectedCapi: number;
+    projectedAppointments: number; // AP
+    projectedWalkins: number; // AD
 }
 
 export interface Project {
     id: number;
     poc: string;
     name: string;
-    qtdBudget: {
-        allInPlan: number;
-        totalSpends: number;
-    };
-    qtdLeads: {
-        overallTgt: number;
-        achieved: number;
-    };
-    qtdAppointments: { // AP
-        target: number;
-        achieved: number;
-    };
-    qtdWalkins: { // AD
-        target: number;
-        achieved: number;
-    };
-    // The detailed weekly performance tracker data
+    
+    // The Strategic Business Plan
+    quarterlyBusinessPlan: QuarterlyBusinessPlan;
+    
+    // The Week-on-Week Tracker
     performanceData: WeeklyPerformancePoint[];
-    // The initial plan for platforms for the whole quarter
-    quarterlyPlatformPlan: PlatformPlanTarget[];
+    
     // Snapshot of current platform performance for forecasting baseline
     currentPlatforms: PlatformPerformance[];
 }
@@ -79,7 +96,7 @@ export interface PlatformPlan {
     projectedAppointments: number;
     projectedCPL: number;
     projectedCPA: number;
-    recommendation: string; // This will now be the AI's analysis of the user's plan
+    recommendation: string; 
 }
 
 export interface StrategicPlan {
@@ -92,19 +109,4 @@ export interface StrategicPlan {
         summary: string;
     };
     platformSpecificPlan: PlatformPlan[];
-}
-
-// --- Forecasting Simulator Types ---
-
-export interface PlatformForecast {
-    id: string; // Unique ID for React keys, e.g., 'Google Search' or 'new-16_13_23'
-    name: string;
-    spends: number;
-    cpl: number;
-    leads: number;
-    // Conversion rates and downstream metrics
-    capiToApRate: number; // in percent
-    projectedAppointments: number;
-    apToAdRate: number; // in percent
-    projectedWalkins: number;
 }
