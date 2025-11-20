@@ -1,13 +1,17 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { WeeklyPerformancePoint } from '../types';
+import { UploadIcon } from './Icons';
+import { readExcelFile, normalizeKeys } from '../utils/excelImport';
 
 interface PerformanceTrackerProps {
     data: WeeklyPerformancePoint[];
     onUpdate: (index: number, field: 'leads' | 'appointments' | 'walkins' | 'spends', value: number) => void;
+    onBulkUpdate?: (newData: WeeklyPerformancePoint[]) => void;
 }
 
-export const PerformanceTracker: React.FC<PerformanceTrackerProps> = ({ data, onUpdate }) => {
+export const PerformanceTracker: React.FC<PerformanceTrackerProps> = ({ data, onUpdate, onBulkUpdate }) => {
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
     const enrichedData = useMemo(() => {
         let cumTgt = { leads: 0, appointments: 0, walkins: 0, spends: 0, allInSpends: 0 };
@@ -76,12 +80,60 @@ export const PerformanceTracker: React.FC<PerformanceTrackerProps> = ({ data, on
         onUpdate(index, field, val);
     };
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !onBulkUpdate) return;
+
+        try {
+            const rows = await readExcelFile(file);
+            if (!rows || rows.length === 0) {
+                alert('No data found in file');
+                return;
+            }
+
+            const newData = [...data];
+            rows.forEach((row, index) => {
+                if (index < newData.length) {
+                    const norm = normalizeKeys(row);
+                    if (norm.leads !== undefined) newData[index].achieved.leads = parseFloat(norm.leads);
+                    if (norm.appointments !== undefined) newData[index].achieved.appointments = parseFloat(norm.appointments);
+                    if (norm.walkins !== undefined) newData[index].achieved.walkins = parseFloat(norm.walkins);
+                    if (norm.spends !== undefined) newData[index].achieved.spends = parseFloat(norm.spends);
+                }
+            });
+
+            onBulkUpdate(newData);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        } catch (err) {
+            console.error(err);
+            alert('Failed to parse Excel file. Ensure columns match (e.g., "Achieved Leads", "Achieved Spends")');
+        }
+    };
+
     if (data.length === 0) {
         return <div className="p-8 text-center text-text-secondary italic glass rounded-xl">Please configure Weekly Planning first to generate the tracker.</div>;
     }
 
     return (
-        <div className="bg-surface/50 rounded-xl shadow-2xl overflow-hidden border border-slate-700 backdrop-blur-sm animate-fadeIn">
+        <div className="bg-surface/50 rounded-xl shadow-2xl overflow-hidden border border-slate-700 backdrop-blur-sm animate-fadeIn relative">
+             {onBulkUpdate && (
+                 <div className="absolute top-2 right-2 z-30">
+                     <input 
+                        type="file" 
+                        accept=".xlsx, .xls" 
+                        ref={fileInputRef} 
+                        onChange={handleFileUpload} 
+                        className="hidden" 
+                     />
+                     <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-1.5 px-3 rounded border border-slate-600"
+                     >
+                         <UploadIcon className="w-3 h-3 mr-1.5" /> Upload Actuals
+                     </button>
+                 </div>
+             )}
+
              <div className="overflow-x-auto custom-scrollbar">
                 <table className="min-w-full border-collapse">
                     <thead>

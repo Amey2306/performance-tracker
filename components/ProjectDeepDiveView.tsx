@@ -127,6 +127,16 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
       }
   };
 
+  const handlePerformanceBulkUpdate = (newData: WeeklyPerformancePoint[]) => {
+      setPerformanceData(newData);
+      onUpdateProject({
+          ...project,
+          performanceData: newData,
+          changeLogs: [createLogEntry("Bulk uploaded Performance Tracker data from Excel"), ...project.changeLogs]
+      });
+      alert("Performance data updated successfully from Excel.");
+  };
+
   const handleGenerateAIAnalysis = async () => {
     if (!forecastPlan || forecastPlan.length === 0) return;
     setIsLoading(true);
@@ -220,6 +230,7 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
                     <PerformanceTracker 
                         data={performanceData} 
                         onUpdate={handlePerformanceUpdate}
+                        onBulkUpdate={handlePerformanceBulkUpdate}
                     />
                 </div>
             )}

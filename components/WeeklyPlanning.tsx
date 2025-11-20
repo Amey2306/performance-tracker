@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { QuarterlyBusinessPlan, WeeklyPerformancePoint } from '../types';
-import { SaveIcon, PencilIcon } from './Icons';
+import { SaveIcon, PencilIcon, UploadIcon } from './Icons';
+import { readExcelFile, normalizeKeys } from '../utils/excelImport';
 
 interface WeeklyPlanningProps {
     quarterlyPlan: QuarterlyBusinessPlan;
@@ -21,6 +22,7 @@ interface WeeklyPlanRow {
 export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, currentData, onSave }) => {
     const [quarterStartDate, setQuarterStartDate] = useState('2025-10-06'); 
     const [weeks, setWeeks] = useState<WeeklyPlanRow[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         generateWeeks(quarterStartDate);
@@ -141,6 +143,37 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
         onSave(performancePoints);
     };
 
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const rows = await readExcelFile(file);
+            if (!rows || rows.length === 0) {
+                alert('No data found in file');
+                return;
+            }
+            
+            const newWeeks = [...weeks];
+            // Try to map imported rows to weeks. Assuming order matches.
+            rows.forEach((row, index) => {
+                if (index < newWeeks.length) {
+                    const norm = normalizeKeys(row);
+                    if (norm.distributionPercent !== undefined) newWeeks[index].distributionPercent = parseFloat(norm.distributionPercent);
+                    if (norm.ltwPercent !== undefined) newWeeks[index].ltwPercent = parseFloat(norm.ltwPercent);
+                    if (norm.spendFactor !== undefined) newWeeks[index].spendFactor = parseFloat(norm.spendFactor);
+                }
+            });
+            
+            setWeeks(newWeeks);
+            alert('Planning data imported. Please review and save.');
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        } catch (err) {
+            console.error(err);
+            alert('Failed to parse Excel file. Ensure it contains columns for Distribution %, LTW %, etc.');
+        }
+    };
+
     const renderRow = (label: string, dataKey: string, isCurrency = false, isCumulative = false, isInput = false, inputField?: keyof WeeklyPlanRow) => (
         <tr className={`${isCumulative ? 'bg-slate-800/30 text-xs text-text-secondary' : 'border-t border-slate-700/50'} ${isInput ? 'bg-brand-dark/10' : 'hover:bg-slate-800/20'} transition-colors`}>
             <td className={`sticky left-0 z-10 p-2 text-left border-r border-slate-700 
@@ -204,14 +237,30 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
                             Configure weekly distribution. Dates auto-align to Monday-Sunday. <span className="text-brand-secondary">Past weeks are locked.</span>
                         </p>
                     </div>
-                    <div className="flex items-center gap-3 bg-background p-2 rounded border border-slate-700 shadow-inner">
-                        <label className="text-xs text-text-secondary uppercase font-bold">Quarter Start:</label>
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 bg-background p-2 rounded border border-slate-700 shadow-inner">
+                            <label className="text-xs text-text-secondary uppercase font-bold">Quarter Start:</label>
+                            <input 
+                                type="date" 
+                                value={quarterStartDate} 
+                                onChange={handleDateChange}
+                                className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white focus:ring-1 focus:ring-brand-secondary outline-none transition-shadow"
+                            />
+                        </div>
                         <input 
-                            type="date" 
-                            value={quarterStartDate} 
-                            onChange={handleDateChange}
-                            className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white focus:ring-1 focus:ring-brand-secondary outline-none transition-shadow"
+                            type="file" 
+                            accept=".xlsx, .xls" 
+                            ref={fileInputRef}
+                            onChange={handleFileUpload}
+                            className="hidden"
                         />
+                        <button 
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex items-center bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold py-2 px-3 rounded-md transition-colors"
+                            title="Upload Excel with columns: 'Distribution %', 'LTW %', 'Spend Factor'"
+                        >
+                            <UploadIcon className="w-4 h-4 mr-1" /> Upload Excel
+                        </button>
                     </div>
                 </div>
 
