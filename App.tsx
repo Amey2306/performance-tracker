@@ -4,7 +4,7 @@ import { Header } from './components/Header';
 import { DashboardView } from './components/DashboardView';
 import { ProjectDeepDiveView } from './components/ProjectDeepDiveView';
 import { sampleProjects } from './data/sampleData';
-import type { Project } from './types';
+import type { Project, ProjectStatus } from './types';
 
 const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>(sampleProjects);
@@ -27,7 +27,9 @@ const App: React.FC = () => {
       prevProjects.map(p => p.id === updatedProject.id ? updatedProject : p)
     );
     // Also update the currently selected project to ensure the view stays in sync
-    setSelectedProject(updatedProject);
+    if (selectedProject && selectedProject.id === updatedProject.id) {
+        setSelectedProject(updatedProject);
+    }
   };
 
   const handleAddProject = (name: string, poc: string) => {
@@ -35,6 +37,8 @@ const App: React.FC = () => {
       id: Date.now(), // Simple unique ID
       name,
       poc,
+      status: 'NA',
+      changeLogs: [],
       quarterlyBusinessPlan: {
         overallBV: 0,
         digitalContributionPercent: 10,
@@ -45,13 +49,42 @@ const App: React.FC = () => {
         digitalUnitsTarget: 0,
         walkinsTarget: 0,
         leadsTarget: 0,
-        totalBudget: 0
+        totalBudget: 0,
+        receivedBudget: 0,
+        otherSpends: 0,
+        buffer: 0,
+        lnUnitsTarget: 0
+      },
+      bookingActuals: {
+        siteBVAchieved: 0,
+        digitalBookings: 0,
+        lnBookings: 0,
+        digitalBVAchieved: 0,
+        lnBVAchieved: 0
       },
       performanceData: [],
       currentPlatforms: []
     };
 
     setProjects([...projects, newProject]);
+  };
+
+  const handleDeleteProject = (projectId: number) => {
+    if (window.confirm("Are you sure you want to delete this project? This action cannot be undone.")) {
+        setProjects(prev => prev.filter(p => p.id !== projectId));
+    }
+  };
+
+  const handleEditProject = (projectId: number, name: string, poc: string) => {
+    setProjects(prev => prev.map(p => 
+        p.id === projectId ? { ...p, name, poc } : p
+    ));
+  };
+
+  const handleUpdateProjectStatus = (projectId: number, status: ProjectStatus) => {
+    setProjects(prev => prev.map(p => 
+        p.id === projectId ? { ...p, status } : p
+    ));
   };
 
   return (
@@ -67,6 +100,10 @@ const App: React.FC = () => {
             projects={projects} 
             onSelectProject={handleSelectProject}
             onAddProject={handleAddProject}
+            onDeleteProject={handleDeleteProject}
+            onEditProject={handleEditProject}
+            onUpdateStatus={handleUpdateProjectStatus}
+            onUpdateProject={handleUpdateProject}
           />
         ) : (
           <ProjectDeepDiveView 

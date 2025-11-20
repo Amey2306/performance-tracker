@@ -1,37 +1,35 @@
 
-import React from 'react';
-import { QuarterlyBusinessPlan } from '../types';
+import React, { useState } from 'react';
+import { QuarterlyBusinessPlan, BookingActuals } from '../types';
 import { SaveIcon } from './Icons';
 
 interface QuarterlyPlanProps {
     plan: QuarterlyBusinessPlan;
-    onUpdate: (newPlan: QuarterlyBusinessPlan) => void;
+    bookingActuals?: BookingActuals; 
+    onUpdate: (newPlan: QuarterlyBusinessPlan, newBookings?: BookingActuals) => void;
     onBack: () => void;
 }
 
-export const QuarterlyPlan: React.FC<QuarterlyPlanProps> = ({ plan, onUpdate, onBack }) => {
-    
+export const QuarterlyPlan: React.FC<QuarterlyPlanProps> = ({ plan, bookingActuals, onUpdate, onBack }) => {
+    const [currentBookingActuals, setCurrentBookingActuals] = useState<BookingActuals>(bookingActuals || {
+        siteBVAchieved: 0,
+        digitalBookings: 0,
+        lnBookings: 0,
+        digitalBVAchieved: 0,
+        lnBVAchieved: 0
+    });
+
     const handleChange = (field: keyof QuarterlyBusinessPlan, value: string) => {
         const numVal = parseFloat(value) || 0;
         const updatedPlan = { ...plan, [field]: numVal };
 
         // Recalculate Funnel Automatically
-        // 1. Digital Revenue Target (Cr) = Overall BV * (Digital Contribution % / 100)
         const digitalRevenue = updatedPlan.overallBV * (updatedPlan.digitalContributionPercent / 100);
-        
-        // 2. Digital Units = Digital Revenue / ATS
-        // Guard against divide by zero
         const digitalUnits = updatedPlan.ats > 0 ? digitalRevenue / updatedPlan.ats : 0;
-        
-        // 3. Walkins (AD) = Digital Units / (WTB% / 100)
         const wtbDecimal = (updatedPlan.walkinToBookingRatio || 1) / 100;
         const walkins = digitalUnits / wtbDecimal;
-        
-        // 4. Leads = Walkins / (LTW% / 100)
         const ltwDecimal = (updatedPlan.leadToWalkinRatio || 1) / 100;
         const leads = walkins / ltwDecimal;
-        
-        // 5. Budget = Leads * CPL
         const budget = leads * updatedPlan.targetCPL;
 
         onUpdate({
@@ -40,153 +38,130 @@ export const QuarterlyPlan: React.FC<QuarterlyPlanProps> = ({ plan, onUpdate, on
             walkinsTarget: Math.round(walkins),
             leadsTarget: Math.round(leads),
             totalBudget: Math.round(budget)
-        });
+        }, currentBookingActuals);
+    };
+
+    const handleBookingChange = (field: keyof BookingActuals, value: string) => {
+        const numVal = parseFloat(value) || 0;
+        const updatedBookings = { ...currentBookingActuals, [field]: numVal };
+        setCurrentBookingActuals(updatedBookings);
+        onUpdate(plan, updatedBookings);
     };
 
     const formatCurrency = (val: number) => {
-        if (val >= 10000000) return `${(val / 10000000).toFixed(2)} Cr`;
-        if (val >= 100000) return `${(val / 100000).toFixed(2)} L`;
-        return val.toLocaleString();
+        if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)} Cr`;
+        if (val >= 100000) return `₹${(val / 100000).toFixed(2)} L`;
+        return `₹${val.toLocaleString()}`;
     };
 
+    const InputField = ({ label, value, onChange, type = "number", prefix = "" }: any) => (
+        <div className="relative group">
+            <label className="block text-xs font-bold text-text-secondary uppercase tracking-wider mb-1 group-focus-within:text-brand-secondary transition-colors">{label}</label>
+            <div className="relative">
+                {prefix && <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 font-medium">{prefix}</span>}
+                <input 
+                    type={type} 
+                    value={value} 
+                    onChange={onChange} 
+                    className={`w-full bg-background border border-slate-600 rounded-lg ${prefix ? 'pl-8' : 'px-3'} py-2 text-white font-medium focus:ring-2 focus:ring-brand-secondary focus:border-transparent outline-none transition-all shadow-inner`} 
+                />
+            </div>
+        </div>
+    );
+
     return (
-        <div className="space-y-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="space-y-8 animate-fadeIn">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Section 1: Strategic Inputs */}
-                <div className="bg-surface rounded-xl shadow-lg p-6 border border-slate-700">
-                    <h3 className="text-lg font-bold text-brand-light mb-4 border-b border-slate-700 pb-2">1. Strategic Inputs (Edit Me)</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-xs font-medium text-brand-secondary uppercase tracking-wider mb-1">Overall Project BV (Cr)</label>
-                            <input 
-                                type="number" 
-                                value={plan.overallBV} 
-                                onChange={(e) => handleChange('overallBV', e.target.value)}
-                                className="w-full bg-background border border-slate-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-brand-secondary focus:outline-none font-bold text-lg"
-                            />
-                            <p className="text-[10px] text-text-secondary mt-1">Total Project Business Value Target</p>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-brand-secondary uppercase tracking-wider mb-1">Avg. Ticket Size (Cr)</label>
-                            <input 
-                                type="number" 
-                                value={plan.ats} 
-                                onChange={(e) => handleChange('ats', e.target.value)}
-                                className="w-full bg-background border border-slate-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-brand-secondary focus:outline-none font-bold text-lg"
-                            />
-                            <p className="text-[10px] text-text-secondary mt-1">Cost per Unit</p>
-                        </div>
-                         <div>
-                            <label className="block text-xs font-medium text-brand-secondary uppercase tracking-wider mb-1">Digital Contribution (%)</label>
-                            <input 
-                                type="number" 
-                                value={plan.digitalContributionPercent} 
-                                onChange={(e) => handleChange('digitalContributionPercent', e.target.value)}
-                                className="w-full bg-background border border-slate-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-brand-secondary focus:outline-none font-bold text-lg"
-                            />
-                            <p className="text-[10px] text-text-secondary mt-1">% of Sales from Digital</p>
-                        </div>
-                         <div>
-                            <label className="block text-xs font-medium text-brand-secondary uppercase tracking-wider mb-1">Target CPL (₹)</label>
-                            <input 
-                                type="number" 
-                                value={plan.targetCPL} 
-                                onChange={(e) => handleChange('targetCPL', e.target.value)}
-                                className="w-full bg-background border border-slate-600 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-brand-secondary focus:outline-none font-bold text-lg"
-                            />
-                            <p className="text-[10px] text-text-secondary mt-1">Planned Cost Per Lead</p>
+                <div className="bg-surface rounded-xl shadow-lg p-6 border border-slate-700 hover:shadow-brand-secondary/5 transition-shadow duration-300">
+                    <h3 className="text-lg font-bold text-brand-light mb-4 border-b border-slate-700 pb-2 flex items-center">
+                        <span className="bg-brand-primary/20 text-brand-primary w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">1</span> 
+                        Strategic Inputs
+                    </h3>
+                    <div className="space-y-4">
+                        <InputField label="Overall Project BV (Cr)" value={plan.overallBV} onChange={(e:any) => handleChange('overallBV', e.target.value)} prefix="₹" />
+                        <InputField label="Avg. Ticket Size (ATS) (Cr)" value={plan.ats} onChange={(e:any) => handleChange('ats', e.target.value)} prefix="₹" />
+                        <InputField label="Digital Contribution (%)" value={plan.digitalContributionPercent} onChange={(e:any) => handleChange('digitalContributionPercent', e.target.value)} />
+                        <InputField label="Target CPL (₹)" value={plan.targetCPL} onChange={(e:any) => handleChange('targetCPL', e.target.value)} prefix="₹" />
+                        <div className="grid grid-cols-2 gap-4">
+                             <InputField label="LTW %" value={plan.leadToWalkinRatio} onChange={(e:any) => handleChange('leadToWalkinRatio', e.target.value)} />
+                             <InputField label="WTB %" value={plan.walkinToBookingRatio} onChange={(e:any) => handleChange('walkinToBookingRatio', e.target.value)} />
                         </div>
                     </div>
                 </div>
 
-                {/* Section 2: Funnel Ratios */}
-                <div className="bg-surface rounded-xl shadow-lg p-6 border border-slate-700">
-                    <h3 className="text-lg font-bold text-brand-light mb-4 border-b border-slate-700 pb-2">2. Conversion Assumptions</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-background p-4 rounded-lg border border-slate-600">
-                            <label className="block text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">Lead to Walk-in (LTW %)</label>
-                            <div className="flex items-center">
-                                <input 
-                                    type="number" 
-                                    value={plan.leadToWalkinRatio} 
-                                    onChange={(e) => handleChange('leadToWalkinRatio', e.target.value)}
-                                    className="w-24 bg-slate-800 border border-slate-500 rounded px-3 py-2 text-white font-bold focus:ring-1 focus:ring-brand-secondary"
-                                />
-                                <span className="ml-2 text-lg font-bold">%</span>
-                            </div>
-                            <p className="text-xs text-text-secondary mt-2">Benchmarks: 2% - 5%</p>
+                {/* Section 2: Budget Details */}
+                <div className="bg-surface rounded-xl shadow-lg p-6 border border-slate-700 hover:shadow-brand-secondary/5 transition-shadow duration-300">
+                    <h3 className="text-lg font-bold text-brand-light mb-4 border-b border-slate-700 pb-2 flex items-center">
+                        <span className="bg-green-500/20 text-green-400 w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">2</span>
+                        Budget & Legacy
+                    </h3>
+                    <div className="space-y-4">
+                        <InputField label="Received Budget (₹)" value={plan.receivedBudget} onChange={(e:any) => handleChange('receivedBudget', e.target.value)} prefix="₹" />
+                        <InputField label="Other Spends (₹)" value={plan.otherSpends} onChange={(e:any) => handleChange('otherSpends', e.target.value)} prefix="₹" />
+                        <InputField label="Buffer Amount (₹)" value={plan.buffer} onChange={(e:any) => handleChange('buffer', e.target.value)} prefix="₹" />
+                        <InputField label="Legacy/Non-Digital Unit Tgt" value={plan.lnUnitsTarget} onChange={(e:any) => handleChange('lnUnitsTarget', e.target.value)} />
+                    </div>
+                </div>
+
+                {/* Section 3: Booking Actuals */}
+                 <div className="bg-surface rounded-xl shadow-lg p-6 border border-slate-700 hover:shadow-brand-secondary/5 transition-shadow duration-300">
+                    <h3 className="text-lg font-bold text-brand-light mb-4 border-b border-slate-700 pb-2 flex items-center">
+                        <span className="bg-yellow-500/20 text-yellow-400 w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">3</span>
+                        Booking Actuals (QTD)
+                    </h3>
+                     <div className="space-y-4">
+                        <InputField label="Site BV Achieved (Cr)" value={currentBookingActuals.siteBVAchieved} onChange={(e:any) => handleBookingChange('siteBVAchieved', e.target.value)} prefix="₹" />
+                        <div className="grid grid-cols-2 gap-3">
+                            <InputField label="Digital Bookings" value={currentBookingActuals.digitalBookings} onChange={(e:any) => handleBookingChange('digitalBookings', e.target.value)} />
+                            <InputField label="Legacy Bookings" value={currentBookingActuals.lnBookings} onChange={(e:any) => handleBookingChange('lnBookings', e.target.value)} />
                         </div>
-                        <div className="bg-background p-4 rounded-lg border border-slate-600">
-                            <label className="block text-xs font-medium text-text-secondary uppercase tracking-wider mb-2">Walk-in to Booking (WTB %)</label>
-                            <div className="flex items-center">
-                                <input 
-                                    type="number" 
-                                    value={plan.walkinToBookingRatio} 
-                                    onChange={(e) => handleChange('walkinToBookingRatio', e.target.value)}
-                                    className="w-24 bg-slate-800 border border-slate-500 rounded px-3 py-2 text-white font-bold focus:ring-1 focus:ring-brand-secondary"
-                                />
-                                <span className="ml-2 text-lg font-bold">%</span>
-                            </div>
-                             <p className="text-xs text-text-secondary mt-2">Benchmarks: 5% - 10%</p>
+                        <div className="grid grid-cols-2 gap-3">
+                             <InputField label="Digital BV (Cr)" value={currentBookingActuals.digitalBVAchieved} onChange={(e:any) => handleBookingChange('digitalBVAchieved', e.target.value)} prefix="₹" />
+                             <InputField label="Legacy BV (Cr)" value={currentBookingActuals.lnBVAchieved} onChange={(e:any) => handleBookingChange('lnBVAchieved', e.target.value)} prefix="₹" />
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Section 3: Calculated Targets */}
-            <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl shadow-lg p-6 border border-brand-secondary/30">
-                <h3 className="text-xl font-bold text-white mb-6 flex items-center">
-                    <span className="bg-brand-secondary w-2 h-8 mr-3 rounded-full"></span>
-                    3. Derived Quarterly Targets (Auto-Calculated)
+            {/* Derived Targets */}
+            <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-xl shadow-2xl p-6 border border-brand-secondary/30 mt-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-brand-secondary/10 rounded-full blur-xl"></div>
+                <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-wider flex items-center relative z-10">
+                    <span className="w-2 h-2 bg-brand-secondary rounded-full mr-2 animate-pulse"></span>
+                    Calculated Quarterly Targets
                 </h3>
-                
-                <div className="overflow-x-auto">
-                    <table className="min-w-full text-center">
-                        <thead>
-                            <tr className="text-text-secondary text-xs uppercase tracking-wider border-b border-slate-600/50">
-                                <th className="px-6 py-3 text-left">Metric</th>
-                                <th className="px-6 py-3">Formula Logic</th>
-                                <th className="px-6 py-3 text-right">Target Value</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-700/50 text-sm">
-                            <tr>
-                                <td className="px-6 py-4 text-left font-medium text-brand-light">Digital Revenue</td>
-                                <td className="px-6 py-4 text-text-secondary text-xs">Overall BV * Digital %</td>
-                                <td className="px-6 py-4 text-right font-bold text-white text-lg">₹{formatCurrency(plan.overallBV * (plan.digitalContributionPercent / 100) * 10000000)}</td>
-                            </tr>
-                            <tr>
-                                <td className="px-6 py-4 text-left font-medium text-brand-light">Digital Units</td>
-                                <td className="px-6 py-4 text-text-secondary text-xs">Revenue / ATS</td>
-                                <td className="px-6 py-4 text-right font-bold text-brand-secondary text-2xl">{plan.digitalUnitsTarget}</td>
-                            </tr>
-                             <tr>
-                                <td className="px-6 py-4 text-left font-medium text-text-primary">Walk-ins Required (AD)</td>
-                                <td className="px-6 py-4 text-text-secondary text-xs">Units / WTB%</td>
-                                <td className="px-6 py-4 text-right font-bold text-white text-xl">{plan.walkinsTarget.toLocaleString()}</td>
-                            </tr>
-                             <tr>
-                                <td className="px-6 py-4 text-left font-medium text-text-primary">Leads Required</td>
-                                <td className="px-6 py-4 text-text-secondary text-xs">Walk-ins / LTW%</td>
-                                <td className="px-6 py-4 text-right font-bold text-white text-xl">{plan.leadsTarget.toLocaleString()}</td>
-                            </tr>
-                             <tr className="bg-brand-secondary/10">
-                                <td className="px-6 py-4 text-left font-bold text-white">Total Estimated Budget</td>
-                                <td className="px-6 py-4 text-text-secondary text-xs">Leads * Target CPL</td>
-                                <td className="px-6 py-4 text-right font-bold text-green-400 text-2xl">₹{plan.totalBudget.toLocaleString()}</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center relative z-10">
+                    <div className="bg-surface/50 p-3 rounded-lg backdrop-blur-sm border border-slate-700">
+                        <p className="text-xs text-text-secondary uppercase font-semibold">Digital Revenue</p>
+                        <p className="text-xl font-bold text-brand-light mt-1">{formatCurrency(plan.overallBV * (plan.digitalContributionPercent / 100) * 10000000)}</p>
+                    </div>
+                    <div className="bg-surface/50 p-3 rounded-lg backdrop-blur-sm border border-slate-700">
+                        <p className="text-xs text-text-secondary uppercase font-semibold">Digital Units</p>
+                        <p className="text-xl font-bold text-brand-secondary mt-1">{plan.digitalUnitsTarget}</p>
+                    </div>
+                    <div className="bg-surface/50 p-3 rounded-lg backdrop-blur-sm border border-slate-700">
+                        <p className="text-xs text-text-secondary uppercase font-semibold">Walk-ins (AD)</p>
+                        <p className="text-xl font-bold text-white mt-1">{plan.walkinsTarget}</p>
+                    </div>
+                    <div className="bg-surface/50 p-3 rounded-lg backdrop-blur-sm border border-slate-700">
+                        <p className="text-xs text-text-secondary uppercase font-semibold">Leads</p>
+                        <p className="text-xl font-bold text-white mt-1">{plan.leadsTarget}</p>
+                    </div>
+                    <div className="bg-surface/50 p-3 rounded-lg backdrop-blur-sm border border-green-500/30 bg-green-900/10">
+                        <p className="text-xs text-text-secondary uppercase font-semibold">Planned Budget</p>
+                        <p className="text-xl font-bold text-green-400 mt-1">{formatCurrency(plan.totalBudget)}</p>
+                    </div>
                 </div>
             </div>
 
             <div className="flex justify-end pt-4 border-t border-slate-700">
                 <button 
                     onClick={onBack}
-                    className="flex items-center bg-brand-primary hover:bg-brand-dark text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-all hover:scale-105"
+                    className="flex items-center bg-gradient-to-r from-brand-primary to-brand-dark hover:from-brand-secondary hover:to-brand-primary text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-all transform hover:scale-105"
                 >
                     <SaveIcon className="w-5 h-5 mr-2" />
-                    Save Plan & Back to Dashboard
+                    Save Plan & Back
                 </button>
             </div>
         </div>

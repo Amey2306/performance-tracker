@@ -30,11 +30,25 @@ export interface QuarterlyBusinessPlan {
     // Cost Assumptions
     targetCPL: number;
     
+    // Budget Details (New)
+    receivedBudget: number;
+    otherSpends: number;
+    buffer: number;
+
     // Computed Targets (Quarterly Totals)
     digitalUnitsTarget: number;
+    lnUnitsTarget: number; // Legacy/Non-Digital Units
     walkinsTarget: number; // AD
     leadsTarget: number;
-    totalBudget: number;
+    totalBudget: number; // All-in Planned Budget
+}
+
+export interface BookingActuals {
+    siteBVAchieved: number;
+    digitalBookings: number;
+    lnBookings: number;
+    digitalBVAchieved: number;
+    lnBVAchieved: number;
 }
 
 export interface PlatformPerformance {
@@ -64,19 +78,35 @@ export interface PlatformForecast {
     projectedWalkins: number; // AD
 }
 
+export interface ChangeLogEntry {
+    id: string;
+    date: string;
+    description: string;
+    user?: string;
+}
+
+export type ProjectStatus = 'Plan sent to BM' | 'Plan approved' | 'Will go live' | 'Live' | 'Paused' | 'NA';
+
 export interface Project {
     id: number;
     poc: string;
     name: string;
+    status: ProjectStatus;
     
     // The Strategic Business Plan
     quarterlyBusinessPlan: QuarterlyBusinessPlan;
     
+    // Sales/Booking Performance (New)
+    bookingActuals: BookingActuals;
+
     // The Week-on-Week Tracker
     performanceData: WeeklyPerformancePoint[];
     
     // Snapshot of current platform performance for forecasting baseline
     currentPlatforms: PlatformPerformance[];
+
+    // History of changes
+    changeLogs: ChangeLogEntry[];
 }
 
 // --- AI Service Related Types ---

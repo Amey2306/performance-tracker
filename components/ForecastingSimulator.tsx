@@ -21,16 +21,11 @@ const createNewPlatform = (name: string = ''): PlatformForecast => ({
     spends: 0,
     cpl: 0,
     leads: 0,
-    leadToCapiPercent: 50, // Leads -> Appointments Proposed
+    leadToCapiPercent: 50,
     projectedCapi: 0,
-    capiToApPercent: 40, // Capi -> Site Visits Done (AP)
+    capiToApPercent: 40,
     projectedAppointments: 0, 
-    apToAdPercent: 100, // Usually AP is same as AD if defined strictly, but user prompts suggests conversion steps. 
-    // Based on prompt: "AP = Ad * 2" implies 50% AD to AP ratio.
-    // Let's stick to: Leads -> (Conv) -> Walkins.
-    // The user said "AP = AD * 2". This means 2 APs result in 1 AD.
-    // So we will calculate backwards or forwards.
-    // Forward: Leads -> (L2W%) -> Walkins.
+    apToAdPercent: 100,
     projectedWalkins: 0,
 });
 
@@ -39,7 +34,6 @@ export const ForecastingSimulator: React.FC<ForecastingSimulatorProps> = ({ proj
     const [newVendorName, setNewVendorName] = useState(VENDORS[0]);
 
     useEffect(() => {
-        // Initialize with current platforms if available, else empty
         if (project.currentPlatforms.length > 0) {
             const initialForecast = project.currentPlatforms.map(p => ({
                 id: p.name,
@@ -47,7 +41,7 @@ export const ForecastingSimulator: React.FC<ForecastingSimulatorProps> = ({ proj
                 spends: p.spends,
                 leads: p.leads,
                 cpl: p.leads > 0 ? p.spends/p.leads : 0,
-                leadToCapiPercent: 50, // Default
+                leadToCapiPercent: 50,
                 projectedCapi: 0, 
                 capiToApPercent: 40,
                 projectedAppointments: p.appointments,
@@ -75,26 +69,15 @@ export const ForecastingSimulator: React.FC<ForecastingSimulatorProps> = ({ proj
             // @ts-ignore
             platform[field] = num;
 
-            // Logic: "Depends on how much leads / spends and CPl m going to achieve"
-            // Primary Input: Spends & CPL -> Leads
             if (field === 'spends' || field === 'cpl') {
                 platform.leads = platform.cpl > 0 ? Math.round(platform.spends / platform.cpl) : 0;
             } 
-            // Alternative: Leads & CPL -> Spends
             else if (field === 'leads') {
                  platform.spends = Math.round(platform.leads * platform.cpl);
             }
 
-            // Downstream Calculations
-            // Leads -> Walkins using L2W% (derived from user prompt L2W column)
-            // User prompt: "AD = Leads * Walkin %"
-            // Let's assume user enters "Lead to Walkin %" effectively via the AP/AD funnel or directly.
-            // To simplify for this simulation based on prompt:
-            // Capi (Proposed) = Leads * %
             platform.projectedCapi = Math.round(platform.leads * (platform.leadToCapiPercent / 100));
-            // AP (Done) = Capi * %
             platform.projectedAppointments = Math.round(platform.projectedCapi * (platform.capiToApPercent / 100));
-            // AD (Walkin) = AP * % (User said AP = AD*2, so AD is 50% of AP)
             platform.projectedWalkins = Math.round(platform.projectedAppointments * (platform.apToAdPercent / 100));
             
             newForecast[index] = platform;
@@ -120,30 +103,30 @@ export const ForecastingSimulator: React.FC<ForecastingSimulatorProps> = ({ proj
     const overallCPL = totals.leads > 0 ? totals.spends / totals.leads : 0;
 
     return (
-        <div className="space-y-6">
-            <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
-                <h4 className="text-sm font-semibold text-text-secondary mb-4">Simulation Controls</h4>
+        <div className="space-y-6 animate-fadeIn">
+            <div className="bg-surface/50 backdrop-blur-sm p-4 rounded-lg border border-slate-700 shadow-lg">
+                <h4 className="text-sm font-semibold text-text-secondary mb-4 uppercase tracking-wide">Simulation Controls</h4>
                 <div className="flex items-center gap-4">
                     <select 
                         value={newVendorName} 
                         onChange={(e) => setNewVendorName(e.target.value)}
-                        className="bg-background border border-slate-600 rounded px-3 py-2 text-white focus:ring-1 focus:ring-brand-secondary"
+                        className="bg-background border border-slate-600 rounded px-3 py-2 text-white focus:ring-1 focus:ring-brand-secondary outline-none"
                     >
                         {VENDORS.map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
-                    <button onClick={addVendor} className="flex items-center bg-brand-secondary hover:bg-brand-primary text-white font-medium py-2 px-4 rounded transition">
+                    <button onClick={addVendor} className="flex items-center bg-gradient-to-r from-brand-secondary to-brand-primary hover:from-brand-primary hover:to-brand-secondary text-white font-medium py-2 px-4 rounded shadow-md transition-all transform hover:scale-105">
                         <PlusIcon className="w-4 h-4 mr-2" /> Add Platform
                     </button>
                 </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-700 rounded-lg shadow-lg">
+            <div className="overflow-x-auto border border-slate-700 rounded-lg shadow-2xl custom-scrollbar">
                 <table className="min-w-full divide-y divide-slate-700">
-                    <thead className="bg-slate-800">
+                    <thead className="bg-slate-900">
                         <tr>
                             <th className="py-3 px-3 text-left text-xs font-bold text-text-secondary uppercase">Platform</th>
                             <th className="py-3 px-3 text-left text-xs font-bold text-brand-secondary uppercase w-32">Budget (₹)</th>
-                            <th className="py-3 px-3 text-left text-xs font-bold text-brand-secondary uppercase w-24">Exp. CPL</th>
+                            <th className="py-3 px-3 text-left text-xs font-bold text-brand-secondary uppercase w-24">Exp. CPL (₹)</th>
                             <th className="py-3 px-3 text-left text-xs font-bold text-text-primary uppercase w-24">Leads</th>
                             <th className="py-3 px-3 text-left text-xs font-bold text-text-secondary uppercase w-24">Lead to Capi %</th>
                             <th className="py-3 px-3 text-left text-xs font-bold text-text-secondary uppercase w-24">Capi to AP %</th>
@@ -156,41 +139,41 @@ export const ForecastingSimulator: React.FC<ForecastingSimulatorProps> = ({ proj
                     <tbody className="bg-surface divide-y divide-slate-700 text-sm">
                         {forecast.map(p => (
                             <tr key={p.id} className="hover:bg-slate-800/50 transition">
-                                <td className="p-3 font-medium">{p.name}</td>
+                                <td className="p-3 font-medium text-text-primary">{p.name}</td>
                                 <td className="p-2">
-                                    <input type="number" value={p.spends} onChange={e => handleUpdate(p.id, 'spends', e.target.value)} className="w-full bg-background border border-slate-600 rounded px-2 py-1 text-white text-right" />
+                                    <input type="number" value={p.spends} onChange={e => handleUpdate(p.id, 'spends', e.target.value)} className="w-full bg-background border border-slate-600 rounded px-2 py-1 text-white text-right focus:ring-1 focus:ring-brand-secondary outline-none" />
                                 </td>
                                 <td className="p-2">
-                                    <input type="number" value={Math.round(p.cpl)} onChange={e => handleUpdate(p.id, 'cpl', e.target.value)} className="w-full bg-background border border-slate-600 rounded px-2 py-1 text-white text-right" />
+                                    <input type="number" value={Math.round(p.cpl)} onChange={e => handleUpdate(p.id, 'cpl', e.target.value)} className="w-full bg-background border border-slate-600 rounded px-2 py-1 text-white text-right focus:ring-1 focus:ring-brand-secondary outline-none" />
                                 </td>
                                 <td className="p-2">
-                                    <input type="number" value={p.leads} onChange={e => handleUpdate(p.id, 'leads', e.target.value)} className="w-full bg-background border border-slate-600 rounded px-2 py-1 text-brand-light font-bold text-right" />
+                                    <input type="number" value={p.leads} onChange={e => handleUpdate(p.id, 'leads', e.target.value)} className="w-full bg-background border border-slate-600 rounded px-2 py-1 text-brand-light font-bold text-right focus:ring-1 focus:ring-brand-secondary outline-none" />
                                 </td>
                                  <td className="p-2">
-                                    <input type="number" value={p.leadToCapiPercent} onChange={e => handleUpdate(p.id, 'leadToCapiPercent', e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-text-secondary text-right" />
+                                    <input type="number" value={p.leadToCapiPercent} onChange={e => handleUpdate(p.id, 'leadToCapiPercent', e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-text-secondary text-right focus:ring-1 focus:ring-brand-secondary outline-none" />
                                 </td>
                                 <td className="p-2">
-                                    <input type="number" value={p.capiToApPercent} onChange={e => handleUpdate(p.id, 'capiToApPercent', e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-text-secondary text-right" />
+                                    <input type="number" value={p.capiToApPercent} onChange={e => handleUpdate(p.id, 'capiToApPercent', e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-text-secondary text-right focus:ring-1 focus:ring-brand-secondary outline-none" />
                                 </td>
-                                <td className="p-3 text-right font-semibold">{p.projectedAppointments}</td>
+                                <td className="p-3 text-right font-semibold text-white">{p.projectedAppointments}</td>
                                 <td className="p-2">
-                                    <input type="number" value={p.apToAdPercent} onChange={e => handleUpdate(p.id, 'apToAdPercent', e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-text-secondary text-right" />
+                                    <input type="number" value={p.apToAdPercent} onChange={e => handleUpdate(p.id, 'apToAdPercent', e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-text-secondary text-right focus:ring-1 focus:ring-brand-secondary outline-none" />
                                 </td>
                                 <td className="p-3 text-right font-bold text-green-400">{p.projectedWalkins}</td>
                                 <td className="p-2 text-center">
-                                    <button onClick={() => removePlatform(p.id)} className="text-red-400 hover:text-red-500"><TrashIcon className="w-4 h-4" /></button>
+                                    <button onClick={() => removePlatform(p.id)} className="text-red-400 hover:text-red-500 transition-colors"><TrashIcon className="w-4 h-4" /></button>
                                 </td>
                             </tr>
                         ))}
                     </tbody>
-                    <tfoot className="bg-slate-900/80 font-bold text-brand-light">
+                    <tfoot className="bg-slate-900/80 font-bold text-brand-light backdrop-blur-md">
                         <tr>
                             <td className="p-3 uppercase text-xs tracking-wider">Total Forecast</td>
-                            <td className="p-3 text-right">₹{totals.spends.toLocaleString()}</td>
+                            <td className="p-3 text-right text-brand-secondary">₹{totals.spends.toLocaleString()}</td>
                             <td className="p-3 text-right">₹{Math.round(overallCPL).toLocaleString()}</td>
-                            <td className="p-3 text-right">{totals.leads.toLocaleString()}</td>
+                            <td className="p-3 text-right text-white">{totals.leads.toLocaleString()}</td>
                             <td colSpan={2}></td>
-                            <td className="p-3 text-right">{totals.appointments.toLocaleString()}</td>
+                            <td className="p-3 text-right text-white">{totals.appointments.toLocaleString()}</td>
                             <td></td>
                             <td className="p-3 text-right text-green-400">{totals.walkins.toLocaleString()}</td>
                             <td></td>
@@ -204,7 +187,7 @@ export const ForecastingSimulator: React.FC<ForecastingSimulatorProps> = ({ proj
                      <button 
                         onClick={() => onCommitPlan(forecast)} 
                         disabled={forecast.length === 0}
-                        className="flex items-center bg-green-700 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-md shadow-lg transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center bg-gradient-to-r from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <UploadIcon className="w-5 h-5 mr-2" />
                         Commit Plan to Next Week

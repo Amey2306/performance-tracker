@@ -19,17 +19,15 @@ interface WeeklyPlanRow {
 }
 
 export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, currentData, onSave }) => {
-    const [quarterStartDate, setQuarterStartDate] = useState('2025-10-06'); // Defaulting to a Monday close to the screenshot example
+    const [quarterStartDate, setQuarterStartDate] = useState('2025-10-06'); 
     const [weeks, setWeeks] = useState<WeeklyPlanRow[]>([]);
 
-    // Initialize weeks based on start date or existing data
     useEffect(() => {
         generateWeeks(quarterStartDate);
     }, []);
 
     const generateWeeks = (startDateStr: string) => {
         const start = new Date(startDateStr);
-        // Adjust to the Monday of the given week
         const day = start.getDay();
         const diff = start.getDate() - day + (day === 0 ? -6 : 1); 
         
@@ -47,9 +45,9 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
                 id: i,
                 startDate: currentMonday.toISOString().split('T')[0],
                 endDate: sunday.toISOString().split('T')[0],
-                distributionPercent: i < 12 ? (100 / 12) : 0, // Default even split
-                ltwPercent: quarterlyPlan.leadToWalkinRatio || 3.0, // Default to quarterly avg
-                spendFactor: i < 12 ? 1 : 0 // Default 12 weeks active
+                distributionPercent: i < 12 ? (100 / 12) : 0, 
+                ltwPercent: quarterlyPlan.leadToWalkinRatio || 3.0, 
+                spendFactor: i < 12 ? 1 : 0 
             });
 
             currentMonday.setDate(currentMonday.getDate() + 7);
@@ -78,22 +76,10 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
         let cumAllIn = 0;
 
         return weeks.map(week => {
-            // Formula: Metric = Target * (Dist% / 100) * SpendFactor
-            // SpendFactor allows user to zero out a week (set to 0) or double down (set to 2) manually
-            
-            // 1. Leads
             const leads = Math.round(quarterlyPlan.leadsTarget * (week.distributionPercent / 100) * week.spendFactor);
-            
-            // 2. AD (Walkins) = Leads * Walkin % (LTW for that week)
             const ad = Math.round(leads * (week.ltwPercent / 100));
-
-            // 3. AP = AD * 2
             const ap = ad * 2;
-
-            // 4. Spends = Total Budget * Leads % * Active Spend Factor
             const spends = Math.round(quarterlyPlan.totalBudget * (week.distributionPercent / 100) * week.spendFactor);
-            
-            // 5. All-in Spends = Spends * 1.18 (Tax)
             const allInSpends = Math.round(spends * 1.18);
 
             cumLeads += leads;
@@ -127,8 +113,6 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
                     const date = new Date(d);
                     return `${date.getDate()}-${date.toLocaleString('default', { month: 'short' })}`;
                 };
-                
-                // Preserve existing achieved data if week exists
                 const existingAchieved = currentData[i]?.achieved || { leads: 0, appointments: 0, walkins: 0, spends: 0 };
 
                 return {
@@ -148,12 +132,11 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
         onSave(performancePoints);
     };
 
-    // Helper to render a data row
     const renderRow = (label: string, dataKey: string, isCurrency = false, isCumulative = false, isInput = false, inputField?: keyof WeeklyPlanRow) => (
-        <tr className={`${isCumulative ? 'bg-slate-800/30 text-xs text-text-secondary' : 'border-t border-slate-700/50'} ${isInput ? 'bg-brand-dark/10' : ''}`}>
+        <tr className={`${isCumulative ? 'bg-slate-800/30 text-xs text-text-secondary' : 'border-t border-slate-700/50'} ${isInput ? 'bg-brand-dark/10' : 'hover:bg-slate-800/20'} transition-colors`}>
             <td className={`sticky left-0 z-10 p-2 text-left border-r border-slate-700 
                 ${isCumulative ? 'pl-6' : 'pl-3 font-medium text-text-primary'} 
-                ${isInput ? 'font-bold text-brand-secondary flex items-center justify-between' : ''}
+                ${isInput ? 'font-bold text-brand-secondary flex items-center justify-between shadow-[inset_0_0_10px_rgba(0,0,0,0.1)]' : ''}
                 bg-surface`
             }>
                 <span>{label}</span>
@@ -166,11 +149,11 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
                             type="number" 
                             value={isInput ? (Math.round((w[inputField] as number) * 100) / 100) : 0}
                             onChange={(e) => handleWeekChange(i, inputField, parseFloat(e.target.value))}
-                            className="w-full text-right bg-transparent font-bold focus:outline-none hover:bg-slate-700/50 rounded px-1"
+                            className="w-full text-right bg-transparent font-bold focus:outline-none hover:bg-slate-700/50 rounded px-1 transition-colors focus:text-brand-primary"
                         />
                     ) : (
-                        // @ts-ignore
                         <span className={isInput ? 'font-bold' : ''}>
+                            {/* @ts-ignore */}
                             {isCurrency ? '₹' : ''}
                             {/* @ts-ignore */}
                             {isCurrency && w[dataKey] > 99999 ? (w[dataKey]/100000).toFixed(2) + 'L' : w[dataKey].toLocaleString()}
@@ -198,7 +181,7 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
 
     return (
         <div className="space-y-6 animate-fadeIn">
-             <div className="bg-surface rounded-xl shadow-lg p-4 border border-slate-700">
+             <div className="bg-surface/50 backdrop-blur-sm rounded-xl shadow-2xl p-4 border border-slate-700">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
                     <div>
                         <h3 className="text-xl font-bold text-brand-light">Week-on-Week (WOW) Planning</h3>
@@ -206,22 +189,22 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
                             Configure weekly distribution. Dates auto-align to Monday-Sunday.
                         </p>
                     </div>
-                    <div className="flex items-center gap-3 bg-background p-2 rounded border border-slate-700">
+                    <div className="flex items-center gap-3 bg-background p-2 rounded border border-slate-700 shadow-inner">
                         <label className="text-xs text-text-secondary uppercase font-bold">Quarter Start:</label>
                         <input 
                             type="date" 
                             value={quarterStartDate} 
                             onChange={handleDateChange}
-                            className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white focus:ring-1 focus:ring-brand-secondary"
+                            className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm text-white focus:ring-1 focus:ring-brand-secondary outline-none transition-shadow"
                         />
                     </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-lg border border-slate-700">
+                <div className="overflow-x-auto rounded-lg border border-slate-700 custom-scrollbar">
                     <table className="min-w-max text-sm">
-                        <thead className="bg-slate-800 text-text-secondary font-semibold">
+                        <thead className="bg-slate-900/90 text-text-secondary font-semibold">
                             <tr>
-                                <th className="sticky left-0 z-20 bg-slate-800 p-3 text-left min-w-[140px] border-r border-slate-700 shadow-md">WOW Metrics</th>
+                                <th className="sticky left-0 z-20 bg-slate-900 p-3 text-left min-w-[140px] border-r border-slate-700 shadow-[4px_0_10px_rgba(0,0,0,0.3)]">WOW Metrics</th>
                                 {calculatedData.map((w, i) => (
                                     <th key={w.id} className={`p-2 min-w-[90px] text-center border-r border-slate-700/50 ${w.spendFactor === 0 ? 'opacity-50' : ''}`}>
                                         <div className="text-[10px] uppercase tracking-wider text-text-secondary">{w.startDate.slice(8)} - {w.endDate.slice(8)}</div>
@@ -261,7 +244,7 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
                             
                             {/* Editable Spend Factor */}
                             <tr className="border-t border-slate-700 bg-brand-dark/20">
-                                <td className="sticky left-0 z-10 bg-surface p-3 font-bold text-text-secondary border-r border-slate-700 flex justify-between items-center">
+                                <td className="sticky left-0 z-10 bg-surface p-3 font-bold text-text-secondary border-r border-slate-700 flex justify-between items-center shadow-[4px_0_10px_rgba(0,0,0,0.1)]">
                                     <span>Spend (Active)</span>
                                     <PencilIcon className="w-3 h-3 text-text-secondary" />
                                 </td>
@@ -271,7 +254,7 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
                                             type="number" 
                                             value={w.spendFactor} 
                                             onChange={(e) => handleWeekChange(i, 'spendFactor', parseFloat(e.target.value))}
-                                            className="w-full text-center bg-transparent font-bold text-white focus:outline-none hover:bg-slate-700/50 rounded px-1"
+                                            className="w-full text-center bg-transparent font-bold text-white focus:outline-none hover:bg-slate-700/50 rounded px-1 transition-colors"
                                         />
                                     </td>
                                 ))}
@@ -284,7 +267,7 @@ export const WeeklyPlanning: React.FC<WeeklyPlanningProps> = ({ quarterlyPlan, c
                 <div className="flex justify-end mt-6">
                     <button 
                         onClick={handleSave}
-                        className="flex items-center bg-brand-primary hover:bg-brand-dark text-white font-bold py-2 px-6 rounded-md shadow-lg hover:shadow-xl transition transform hover:scale-105"
+                        className="flex items-center bg-gradient-to-r from-brand-primary to-brand-dark hover:from-brand-secondary hover:to-brand-primary text-white font-bold py-2 px-6 rounded-md shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
                     >
                         <SaveIcon className="w-5 h-5 mr-2" />
                         Save Plan to Tracker

@@ -6,6 +6,8 @@ export const sampleProjects: Project[] = [
     id: 2,
     poc: 'Amey',
     name: 'Godrej Horizon',
+    status: 'Live',
+    changeLogs: [],
     quarterlyBusinessPlan: {
         overallBV: 350, // 350 Cr
         digitalContributionPercent: 12.5,
@@ -14,11 +16,23 @@ export const sampleProjects: Project[] = [
         leadToWalkinRatio: 3.0,
         targetCPL: 4819,
         
+        receivedBudget: 14000000,
+        otherSpends: 500000,
+        buffer: 200000,
+
         // Pre-calculated for initial state (will be dynamic in UI)
-        digitalUnitsTarget: 5, // (350 * 0.125) / 7 = 6.25 -> adjusted to 5 in OCR
+        digitalUnitsTarget: 5, 
+        lnUnitsTarget: 1,
         walkinsTarget: 83, 
         leadsTarget: 2778,
         totalBudget: 13386111
+    },
+    bookingActuals: {
+        siteBVAchieved: 12.5,
+        digitalBookings: 2,
+        lnBookings: 1,
+        digitalBVAchieved: 14.0,
+        lnBVAchieved: 7.0
     },
     performanceData: [
         { 

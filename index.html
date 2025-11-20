@@ -11,19 +11,63 @@
         theme: {
           extend: {
             colors: {
-              'brand-primary': '#1e40af',
-              'brand-secondary': '#3b82f6',
-              'brand-light': '#dbeafe',
+              'brand-primary': '#3b82f6', // Bright Blue
+              'brand-secondary': '#06b6d4', // Cyan
+              'brand-accent': '#f59e0b', // Amber
               'brand-dark': '#1e3a8a',
-              'background': '#0f172a',
+              'background': '#0b1120', // Deeper Navy
               'surface': '#1e293b',
               'text-primary': '#f8fafc',
               'text-secondary': '#94a3b8',
             },
+            animation: {
+              'fadeIn': 'fadeIn 0.4s ease-out',
+              'slideUp': 'slideUp 0.5s ease-out',
+              'pulse-slow': 'pulse 3s infinite',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              slideUp: {
+                '0%': { opacity: '0', transform: 'translateY(20px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              }
+            }
           },
         },
       }
     </script>
+    <style>
+      /* Custom Scrollbar for a sleek look */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0f172a; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #334155; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #475569; 
+      }
+      
+      /* Glassmorphism utilities */
+      .glass {
+        background: rgba(30, 41, 59, 0.7);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+      
+      .glass-header {
+        background: rgba(15, 23, 42, 0.85);
+        backdrop-filter: blur(8px);
+      }
+    </style>
   <script type="importmap">
 {
   "imports": {
@@ -31,12 +75,13 @@
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "recharts": "https://aistudiocdn.com/recharts@^3.4.1",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.1"
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"
   }
 }
 </script>
 </head>
-  <body class="bg-background text-text-primary">
+  <body class="bg-background text-text-primary antialiased overflow-y-scroll">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
