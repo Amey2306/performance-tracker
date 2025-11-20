@@ -88,23 +88,26 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background font-sans">
+    <div className="min-h-screen bg-background font-sans flex flex-col">
       <Header 
         showBackButton={!!selectedProject} 
         onBack={handleBackToDashboard}
         projectName={selectedProject?.name}
       />
-      <main className="container mx-auto p-4 md:p-8">
+      {/* Main container - removed padding on mobile for full width feeling */}
+      <main className="flex-1 w-full max-w-[100vw] overflow-x-hidden md:container md:mx-auto p-0 md:p-8">
         {!selectedProject ? (
-          <DashboardView 
-            projects={projects} 
-            onSelectProject={handleSelectProject}
-            onAddProject={handleAddProject}
-            onDeleteProject={handleDeleteProject}
-            onEditProject={handleEditProject}
-            onUpdateStatus={handleUpdateProjectStatus}
-            onUpdateProject={handleUpdateProject}
-          />
+          <div className="p-4 md:p-0">
+            <DashboardView 
+              projects={projects} 
+              onSelectProject={handleSelectProject}
+              onAddProject={handleAddProject}
+              onDeleteProject={handleDeleteProject}
+              onEditProject={handleEditProject}
+              onUpdateStatus={handleUpdateProjectStatus}
+              onUpdateProject={handleUpdateProject}
+            />
+          </div>
         ) : (
           <ProjectDeepDiveView 
             project={selectedProject} 

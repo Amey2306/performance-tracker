@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import type { Project, ProjectStatus } from '../types';
+import type { Project, ProjectStatus, WeeklyPerformancePoint } from '../types';
 import { PlusIcon, XCircleIcon, TrashIcon, PencilIcon } from './Icons';
 
 interface DashboardViewProps {
@@ -17,20 +17,44 @@ const PROJECT_STATUSES: ProjectStatus[] = ['Plan sent to BM', 'Plan approved', '
 
 const getStatusColor = (status: ProjectStatus) => {
     switch (status) {
-        case 'Plan sent to BM': return 'bg-blue-500/20 text-blue-200 border border-blue-500/40 shadow-[0_0_10px_rgba(59,130,246,0.2)]';
-        case 'Plan approved': return 'bg-teal-500/20 text-teal-200 border border-teal-500/40 shadow-[0_0_10px_rgba(20,184,166,0.2)]';
-        case 'Will go live': return 'bg-orange-500/20 text-orange-200 border border-orange-500/40 shadow-[0_0_10px_rgba(249,115,22,0.2)]';
-        case 'Live': return 'bg-green-500/20 text-green-200 border border-green-500/40 shadow-[0_0_10px_rgba(34,197,94,0.2)]';
+        case 'Plan sent to BM': return 'bg-blue-500/20 text-blue-200 border border-blue-500/40';
+        case 'Plan approved': return 'bg-teal-500/20 text-teal-200 border border-teal-500/40';
+        case 'Will go live': return 'bg-orange-500/20 text-orange-200 border border-orange-500/40';
+        case 'Live': return 'bg-green-500/20 text-green-200 border border-green-500/40';
         case 'Paused': return 'bg-red-500/20 text-red-200 border border-red-500/40';
         case 'NA': return 'bg-slate-700/50 text-slate-400 border border-slate-600';
         default: return 'bg-slate-700 text-slate-300';
     }
 };
 
+// Helper to parse "DD-MMM" format (e.g., "6-Oct") assuming current/next year context
+const parseWeekDate = (dateStr: string): Date => {
+    if (!dateStr || dateStr === 'Future') return new Date(2100, 0, 1);
+    
+    const [day, monthStr] = dateStr.split('-');
+    const monthMap: {[key:string]: number} = { 
+        'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5, 
+        'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11 
+    };
+    
+    const month = monthMap[monthStr];
+    if (month === undefined) return new Date(); // Fallback
+
+    // Simple logic: If month is Oct-Dec, assume 2025. If Jan-Sep, assume 2026 (Fiscal Year logic)
+    // Adjust year based on your actual fiscal year needs. Defaulting to 2025 for the provided sample context.
+    const year = (month >= 9) ? 2025 : 2026; 
+    
+    return new Date(year, month, parseInt(day));
+};
+
 export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onSelectProject, onAddProject, onDeleteProject, onEditProject, onUpdateStatus, onUpdateProject }) => {
   const [selectedPoc, setSelectedPoc] = useState('All');
   const [viewMode, setViewMode] = useState<'region' | 'agency'>('region'); // Region = Ex Tax, Agency = Incl Tax
   
+  // Date Filter State
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+
   // Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -53,7 +77,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onSelect
       setIsAddModalOpen(true);
   };
 
-  const handleOpenEditModal = (p: Project) => {
+  const handleOpenEditModal = (p: Project, e?: React.MouseEvent) => {
+      e?.stopPropagation();
       setProjectName(p.name);
       setProjectPoc(p.poc);
       setEditingProjectId(p.id);
@@ -89,6 +114,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onSelect
       onUpdateProject(updatedProject);
   };
 
+  // Helper to filter weeks
+  const getFilteredWeeks = (performanceData: WeeklyPerformancePoint[]) => {
+      if (!filterStartDate && !filterEndDate) return performanceData;
+
+      const start = filterStartDate ? new Date(filterStartDate) : new Date('2000-01-01');
+      const end = filterEndDate ? new Date(filterEndDate) : new Date('2100-01-01');
+
+      return performanceData.filter(week => {
+          const weekStart = parseWeekDate(week.startDate);
+          const weekEnd = parseWeekDate(week.endDate);
+          // Check for overlap or containment
+          return weekStart <= end && weekEnd >= start;
+      });
+  };
+
+  const isFiltering = !!(filterStartDate || filterEndDate);
+
   // Improved Formatting
   const fmt = (val: number, decimals = 0) => val ? `₹${val.toLocaleString(undefined, { maximumFractionDigits: decimals })}` : '₹0';
   const fmtCr = (val: number) => val ? `₹${(val / 10000000).toFixed(2)} Cr` : '-';
@@ -96,51 +138,149 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onSelect
   const fmtPct = (num: number, den: number) => den > 0 ? `${((num / den) * 100).toFixed(1)}%` : '0%';
 
   return (
-    <div className="space-y-6 relative animate-fadeIn pb-12">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div>
+    <div className="space-y-6 relative animate-fadeIn pb-20 md:pb-0">
+        {/* Mobile Heading */}
+        <div className="block md:hidden mb-4">
+             <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-secondary to-brand-primary">Projects</h2>
+             <p className="text-xs text-text-secondary">QTD Overview</p>
+        </div>
+
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+            <div className="hidden md:block">
                 <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-secondary to-brand-primary drop-shadow-sm">QTD Dashboard</h2>
                 <p className="text-text-secondary text-sm mt-1">Manage QTD budget, actuals, and status across all projects.</p>
             </div>
             
-            <div className="flex items-center gap-6 bg-surface/50 p-2 rounded-xl border border-slate-700/50 backdrop-blur-sm">
-                {/* View Mode Tabs */}
-                <div className="flex bg-slate-900/80 p-1 rounded-lg">
-                    <button 
-                        onClick={() => setViewMode('region')}
-                        className={`px-4 py-2 text-xs font-bold rounded-md transition-all duration-300 ${viewMode === 'region' ? 'bg-brand-primary text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'text-text-secondary hover:text-white'}`}
-                    >
-                        Region View (Excl. Tax)
-                    </button>
-                    <button 
-                        onClick={() => setViewMode('agency')}
-                        className={`px-4 py-2 text-xs font-bold rounded-md transition-all duration-300 ${viewMode === 'agency' ? 'bg-brand-primary text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'text-text-secondary hover:text-white'}`}
-                    >
-                        Agency View (All-in)
-                    </button>
+            <div className="flex flex-col md:flex-row w-full md:w-auto gap-4">
+                {/* Date Filter Slicer */}
+                <div className="flex items-center justify-between gap-2 bg-surface/50 p-2 rounded-xl border border-slate-700/50 backdrop-blur-sm w-full md:w-auto">
+                    <div className="flex gap-2 items-center">
+                        <div className="flex flex-col">
+                            <label className="text-[10px] uppercase font-bold text-text-secondary mb-1">From</label>
+                            <input 
+                                type="date" 
+                                value={filterStartDate}
+                                onChange={(e) => setFilterStartDate(e.target.value)}
+                                className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white outline-none focus:ring-1 focus:ring-brand-secondary w-28 md:w-auto"
+                            />
+                        </div>
+                        <div className="flex flex-col">
+                            <label className="text-[10px] uppercase font-bold text-text-secondary mb-1">To</label>
+                            <input 
+                                type="date" 
+                                value={filterEndDate}
+                                onChange={(e) => setFilterEndDate(e.target.value)}
+                                className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-white outline-none focus:ring-1 focus:ring-brand-secondary w-28 md:w-auto"
+                            />
+                        </div>
+                    </div>
+                    {(filterStartDate || filterEndDate) && (
+                        <button 
+                            onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
+                            className="text-xs text-red-400 hover:text-red-300 underline"
+                        >
+                            Clear
+                        </button>
+                    )}
                 </div>
 
-                 <div className="flex items-center border-l border-slate-700 pl-4">
-                    <label htmlFor="poc-slicer" className="text-sm font-medium text-text-secondary mr-2">POC:</label>
-                    <select 
-                        id="poc-slicer"
-                        value={selectedPoc}
-                        onChange={(e) => setSelectedPoc(e.target.value)}
-                        className="bg-slate-800 border border-slate-600 rounded py-1.5 px-2 text-sm text-white outline-none focus:ring-1 focus:ring-brand-secondary hover:border-brand-secondary transition-colors"
+                <div className="flex items-center justify-between gap-4 bg-surface/50 p-2 rounded-xl border border-slate-700/50 backdrop-blur-sm w-full md:w-auto overflow-x-auto">
+                    {/* View Mode Tabs */}
+                    <div className="flex bg-slate-900/80 p-1 rounded-lg whitespace-nowrap">
+                        <button 
+                            onClick={() => setViewMode('region')}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all duration-300 ${viewMode === 'region' ? 'bg-brand-primary text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'text-text-secondary hover:text-white'}`}
+                        >
+                            Region
+                        </button>
+                        <button 
+                            onClick={() => setViewMode('agency')}
+                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all duration-300 ${viewMode === 'agency' ? 'bg-brand-primary text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'text-text-secondary hover:text-white'}`}
+                        >
+                            Agency
+                        </button>
+                    </div>
+
+                    <div className="flex items-center border-l border-slate-700 pl-4 whitespace-nowrap">
+                        <label htmlFor="poc-slicer" className="text-sm font-medium text-text-secondary mr-2">POC:</label>
+                        <select 
+                            id="poc-slicer"
+                            value={selectedPoc}
+                            onChange={(e) => setSelectedPoc(e.target.value)}
+                            className="bg-slate-800 border border-slate-600 rounded py-1.5 px-2 text-sm text-white outline-none focus:ring-1 focus:ring-brand-secondary hover:border-brand-secondary transition-colors"
+                        >
+                            {pocs.map(poc => <option key={poc} value={poc}>{poc}</option>)}
+                        </select>
+                    </div>
+                    <button 
+                        onClick={handleOpenAddModal}
+                        className="hidden md:flex items-center bg-gradient-to-r from-brand-primary to-brand-dark hover:from-brand-secondary hover:to-brand-primary text-white px-5 py-2 rounded-lg shadow-lg text-sm font-bold transition-all transform hover:scale-105"
                     >
-                        {pocs.map(poc => <option key={poc} value={poc}>{poc}</option>)}
-                    </select>
+                        <PlusIcon className="w-4 h-4 mr-2" /> Add
+                    </button>
                 </div>
-                <button 
-                    onClick={handleOpenAddModal}
-                    className="flex items-center bg-gradient-to-r from-brand-primary to-brand-dark hover:from-brand-secondary hover:to-brand-primary text-white px-5 py-2 rounded-lg shadow-lg text-sm font-bold transition-all transform hover:scale-105"
-                >
-                    <PlusIcon className="w-4 h-4 mr-2" /> Add Project
-                </button>
             </div>
         </div>
 
-        <div className="bg-surface/30 rounded-xl shadow-2xl border border-slate-700/50 backdrop-blur-sm overflow-hidden">
+        {/* MOBILE CARD VIEW */}
+        <div className="grid grid-cols-1 gap-4 md:hidden">
+             {filteredProjects.map((p) => {
+                  const qbp = p.quarterlyBusinessPlan;
+                  const filteredWeeks = getFilteredWeeks(p.performanceData);
+                  const rawPerfSpends = filteredWeeks.reduce((s, w) => s + w.achieved.spends, 0);
+                  const totalAchLeads = filteredWeeks.reduce((s, w) => s + w.achieved.leads, 0);
+                  const taxFactor = viewMode === 'agency' ? 1.18 : 1.0;
+                  const perfSpends = rawPerfSpends * taxFactor;
+                  const otherSpends = qbp.otherSpends || 0;
+                  const totalSpends = perfSpends + otherSpends;
+                  const achCPL = totalAchLeads > 0 ? perfSpends / totalAchLeads : 0;
+
+                 return (
+                    <div key={p.id} className="bg-surface/80 border border-slate-700 rounded-xl p-4 shadow-lg active:scale-[0.99] transition-transform" onClick={() => onSelectProject(p.id)}>
+                        <div className="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 className="text-lg font-bold text-white leading-tight">{p.name}</h3>
+                                <p className="text-xs text-text-secondary mt-1">POC: {p.poc}</p>
+                            </div>
+                            <div className={`px-2 py-1 rounded text-[10px] font-bold border ${getStatusColor(p.status)}`}>
+                                {p.status}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                            <div className="bg-slate-900/50 p-2 rounded">
+                                <p className="text-[10px] text-text-secondary uppercase">Total Spend</p>
+                                <p className="text-sm font-bold text-white">{fmtL(totalSpends)}</p>
+                            </div>
+                            <div className="bg-slate-900/50 p-2 rounded">
+                                <p className="text-[10px] text-text-secondary uppercase">Leads</p>
+                                <p className="text-sm font-bold text-yellow-400">{totalAchLeads}</p>
+                            </div>
+                            <div className="bg-slate-900/50 p-2 rounded">
+                                <p className="text-[10px] text-text-secondary uppercase">CPL</p>
+                                <p className="text-sm font-bold text-red-300">{fmt(achCPL)}</p>
+                            </div>
+                        </div>
+                        <div className="flex justify-end border-t border-slate-700/50 pt-2 gap-3">
+                             <button 
+                                onClick={(e) => handleOpenEditModal(p, e)}
+                                className="text-xs text-text-secondary flex items-center gap-1 p-1"
+                             >
+                                 <PencilIcon className="w-3 h-3" /> Edit
+                             </button>
+                             <button 
+                                onClick={(e) => { e.stopPropagation(); onDeleteProject(p.id); }}
+                                className="text-xs text-red-400 flex items-center gap-1 p-1"
+                             >
+                                 <TrashIcon className="w-3 h-3" /> Delete
+                             </button>
+                        </div>
+                    </div>
+                 )
+             })}
+        </div>
+
+        {/* DESKTOP TABLE VIEW */}
+        <div className="hidden md:block bg-surface/30 rounded-xl shadow-2xl border border-slate-700/50 backdrop-blur-sm overflow-hidden">
             <div className="overflow-x-auto max-w-full custom-scrollbar">
                 <table className="border-collapse w-full text-xs text-center">
                     <thead className="bg-slate-900/90 text-text-secondary">
@@ -162,7 +302,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onSelect
                             <th className="p-2 min-w-[110px] sticky left-[230px] glass-header z-20 border-r border-slate-700 shadow-[4px_0_10px_rgba(0,0,0,0.3)]">Status</th>
 
                             {/* Budget */}
-                            <th className="p-2 min-w-[90px] bg-blue-900/10">{viewMode === 'agency' ? 'All-in Planned' : 'Planned Budget'}</th>
+                            <th className="p-2 min-w-[90px] bg-blue-900/10">{isFiltering ? 'Planned (Range)' : (viewMode === 'agency' ? 'All-in Planned' : 'Planned Budget')}</th>
                             <th className="p-2 min-w-[90px] bg-blue-900/10 text-blue-200">Received (Edit)</th>
                             <th className="p-2 min-w-[90px] bg-blue-900/10">Perf Spends</th>
                             <th className="p-2 min-w-[80px] bg-blue-900/10 text-blue-200">Other (Edit)</th>
@@ -172,19 +312,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onSelect
                             <th className="p-2 min-w-[90px] bg-blue-900/10">Pending</th>
 
                             {/* Leads */}
-                            <th className="p-2 min-w-[60px] bg-yellow-900/10">Target</th>
+                            <th className="p-2 min-w-[60px] bg-yellow-900/10">{isFiltering ? 'Target (Range)' : 'Target'}</th>
                             <th className="p-2 min-w-[60px] bg-yellow-900/10">Tgt till Date</th>
                             <th className="p-2 min-w-[60px] bg-yellow-900/10 text-white">Achieved</th>
                             <th className="p-2 min-w-[60px] bg-yellow-900/10">% Del</th>
 
                             {/* AD */}
-                            <th className="p-2 min-w-[60px] bg-green-900/10">Target</th>
+                            <th className="p-2 min-w-[60px] bg-green-900/10">{isFiltering ? 'Target (Range)' : 'Target'}</th>
                             <th className="p-2 min-w-[60px] bg-green-900/10">Tgt till Date</th>
                             <th className="p-2 min-w-[60px] bg-green-900/10 text-white">Achieved</th>
                             <th className="p-2 min-w-[60px] bg-green-900/10">% Del</th>
 
                             {/* AP */}
-                            <th className="p-2 min-w-[60px] bg-purple-900/10">Target</th>
+                            <th className="p-2 min-w-[60px] bg-purple-900/10">{isFiltering ? 'Target (Range)' : 'Target'}</th>
                             <th className="p-2 min-w-[60px] bg-purple-900/10">Tgt till Date</th>
                             <th className="p-2 min-w-[60px] bg-purple-900/10 text-white">Achieved</th>
                             <th className="p-2 min-w-[60px] bg-purple-900/10">L2AP %</th>
@@ -221,24 +361,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onSelect
                             const qbp = p.quarterlyBusinessPlan;
                             const bAct = p.bookingActuals || { siteBVAchieved:0, digitalBookings:0, lnBookings:0, digitalBVAchieved:0, lnBVAchieved:0 };
                             
-                            // --- Aggregates from Weekly Performance (Base/Region Values) ---
-                            const rawPerfSpends = p.performanceData.reduce((s, w) => s + w.achieved.spends, 0);
-                            const totalAchLeads = p.performanceData.reduce((s, w) => s + w.achieved.leads, 0);
-                            const totalAchWalkins = p.performanceData.reduce((s, w) => s + w.achieved.walkins, 0);
-                            const totalAchAP = p.performanceData.reduce((s, w) => s + w.achieved.appointments, 0);
+                            // --- FILTERING LOGIC ---
+                            const filteredWeeks = getFilteredWeeks(p.performanceData);
                             
-                            // Targets Till Date
-                            const totalTgtLeadsTD = p.performanceData.reduce((s, w) => s + w.targets.leads, 0);
-                            const totalTgtWalkinsTD = p.performanceData.reduce((s, w) => s + w.targets.walkins, 0);
-                            const totalTgtAPTD = p.performanceData.reduce((s, w) => s + w.targets.appointments, 0);
+                            // --- Aggregates from Weekly Performance (Base/Region Values) ---
+                            const rawPerfSpends = filteredWeeks.reduce((s, w) => s + w.achieved.spends, 0);
+                            const totalAchLeads = filteredWeeks.reduce((s, w) => s + w.achieved.leads, 0);
+                            const totalAchWalkins = filteredWeeks.reduce((s, w) => s + w.achieved.walkins, 0);
+                            const totalAchAP = filteredWeeks.reduce((s, w) => s + w.achieved.appointments, 0);
+                            
+                            // Targets Till Date (Aggregated based on filter)
+                            const totalTgtLeadsTD = filteredWeeks.reduce((s, w) => s + w.targets.leads, 0);
+                            const totalTgtWalkinsTD = filteredWeeks.reduce((s, w) => s + w.targets.walkins, 0);
+                            const totalTgtAPTD = filteredWeeks.reduce((s, w) => s + w.targets.appointments, 0);
+                            const totalTgtSpendsTD = filteredWeeks.reduce((s, w) => s + w.targets.spends, 0);
 
                             // --- VIEW LOGIC (Tax Handling) ---
                             const taxFactor = viewMode === 'agency' ? 1.18 : 1.0;
                             
-                            const plannedBudget = qbp.totalBudget * taxFactor;
+                            // If Filtering: Planned Budget = Sum of Targets for that period. If Not: Total Q Budget.
+                            const plannedBudget = isFiltering 
+                                ? totalTgtSpendsTD * taxFactor 
+                                : qbp.totalBudget * taxFactor;
+
                             const perfSpends = rawPerfSpends * taxFactor;
                             
-                            // Editable Fields
+                            // Editable Fields (Static inputs, not filtered by date)
                             const received = qbp.receivedBudget || 0;
                             const otherSpends = qbp.otherSpends || 0;
                             const buffer = qbp.buffer || 0;
@@ -246,19 +394,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onSelect
                             const totalSpends = perfSpends + otherSpends;
                             const pendingBudget = received - totalSpends;
 
-                            // --- Ratios ---
+                            // --- Ratios (Calculated on Filtered Data) ---
                             const achCPL = totalAchLeads > 0 ? perfSpends / totalAchLeads : 0;
                             const achCPW = totalAchWalkins > 0 ? perfSpends / totalAchWalkins : 0;
                             const achLTW = totalAchLeads > 0 ? (totalAchWalkins / totalAchLeads) * 100 : 0;
                             const achWTB = totalAchWalkins > 0 ? (bAct.digitalBookings / totalAchWalkins) * 100 : 0;
                             const l2ap = totalAchLeads > 0 ? (totalAchAP / totalAchLeads) * 100 : 0;
 
-                            // --- Bookings ---
+                            // --- Bookings (Static / Not tracked weekly yet) ---
                             const achTotalUnits = bAct.digitalBookings + bAct.lnBookings;
                             const tgtDigiBV = (qbp.overallBV * (qbp.digitalContributionPercent/100));
                             const tgtLNBV = qbp.overallBV - tgtDigiBV; 
                             const achTotalBV = bAct.digitalBVAchieved + bAct.lnBVAchieved;
                             const achCOM = achTotalBV > 0 ? (totalSpends / 10000000) / achTotalBV : 0; 
+
+                            // Determine what Target to show (Full Q or Filtered Slice)
+                            const displayLeadsTarget = isFiltering ? totalTgtLeadsTD : qbp.leadsTarget;
+                            const displayWalkinsTarget = isFiltering ? totalTgtWalkinsTD : qbp.walkinsTarget;
+                            // AP Target not strictly defined in Q Plan, so we use TD sum
+                            const displayAPTarget = totalTgtAPTD;
 
                             return (
                                 <tr key={p.id} className="hover:bg-slate-800/80 hover:shadow-lg transition-all duration-200 animate-fadeIn" style={{animationDelay: `${idx * 50}ms`}}>
@@ -282,7 +436,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onSelect
                                     </td>
 
                                     {/* Budget */}
-                                    <td className="p-2 border-r border-slate-700/50">{fmtL(plannedBudget)}</td>
+                                    <td className={`p-2 border-r border-slate-700/50 ${isFiltering ? 'text-blue-300 font-medium' : ''}`}>{fmtL(plannedBudget)}</td>
                                     
                                     <td className="p-0 border-r border-slate-700/50 bg-blue-900/5 hover:bg-blue-900/20 transition-colors relative group">
                                         <input 
@@ -321,19 +475,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onSelect
                                     <td className="p-2 border-r border-slate-700/50 text-text-secondary">{fmtL(pendingBudget)}</td>
 
                                     {/* Leads */}
-                                    <td className="p-2 border-r border-slate-700/50">{qbp.leadsTarget}</td>
+                                    <td className="p-2 border-r border-slate-700/50">{displayLeadsTarget}</td>
                                     <td className="p-2 border-r border-slate-700/50">{totalTgtLeadsTD}</td>
                                     <td className="p-2 border-r border-slate-700/50 font-medium text-white">{totalAchLeads}</td>
-                                    <td className="p-2 border-r border-slate-700/50">{fmtPct(totalAchLeads, qbp.leadsTarget)}</td>
+                                    <td className="p-2 border-r border-slate-700/50">{fmtPct(totalAchLeads, displayLeadsTarget)}</td>
 
                                     {/* AD */}
-                                    <td className="p-2 border-r border-slate-700/50">{qbp.walkinsTarget}</td>
+                                    <td className="p-2 border-r border-slate-700/50">{displayWalkinsTarget}</td>
                                     <td className="p-2 border-r border-slate-700/50">{totalTgtWalkinsTD}</td>
                                     <td className="p-2 border-r border-slate-700/50 font-medium text-white">{totalAchWalkins}</td>
-                                    <td className="p-2 border-r border-slate-700/50">{fmtPct(totalAchWalkins, qbp.walkinsTarget)}</td>
+                                    <td className="p-2 border-r border-slate-700/50">{fmtPct(totalAchWalkins, displayWalkinsTarget)}</td>
 
                                     {/* AP */}
-                                    <td className="p-2 border-r border-slate-700/50 text-xs">-</td>
+                                    <td className="p-2 border-r border-slate-700/50 text-xs">{isFiltering ? displayAPTarget : '-'}</td>
                                     <td className="p-2 border-r border-slate-700/50">{totalTgtAPTD}</td>
                                     <td className="p-2 border-r border-slate-700/50 font-medium text-white">{totalAchAP}</td>
                                     <td className="p-2 border-r border-slate-700/50">{l2ap.toFixed(1)}%</td>
@@ -341,7 +495,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onSelect
                                     {/* Ratios */}
                                     <td className="p-2 border-r border-slate-700/50">{fmt(qbp.targetCPL * taxFactor)}</td>
                                     <td className="p-2 border-r border-slate-700/50 font-bold text-red-200">{fmt(achCPL)}</td>
-                                    <td className="p-2 border-r border-slate-700/50">{fmtL((plannedBudget)/qbp.walkinsTarget)}</td>
+                                    <td className="p-2 border-r border-slate-700/50">{fmtL((plannedBudget)/displayWalkinsTarget)}</td>
                                     <td className="p-2 border-r border-slate-700/50 font-bold text-white">{fmtL(achCPW)}</td>
                                     <td className="p-2 border-r border-slate-700/50">{qbp.leadToWalkinRatio}%</td>
                                     <td className="p-2 border-r border-slate-700/50 font-bold text-white">{achLTW.toFixed(1)}%</td>
@@ -426,6 +580,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ projects, onSelect
                 </div>
             </div>
         )}
+
+        {/* Floating Action Button (Mobile Only) */}
+        <button 
+            onClick={handleOpenAddModal}
+            className="md:hidden fixed bottom-6 right-6 bg-brand-primary text-white w-14 h-14 rounded-full shadow-2xl flex items-center justify-center z-40 animate-slideUp active:scale-90 transition-transform"
+        >
+            <PlusIcon className="w-8 h-8" />
+        </button>
     </div>
   );
 };

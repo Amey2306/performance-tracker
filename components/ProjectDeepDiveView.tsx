@@ -137,32 +137,34 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
 
   return (
     <div className="space-y-6">
-        {/* Navigation Tabs */}
-        <div className="flex flex-wrap space-x-1 bg-slate-800/50 p-1 rounded-lg w-fit">
-             {(['plan', 'weekly', 'performance', 'simulator'] as const).map(tab => (
-                 <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${
-                        activeTab === tab 
-                        ? 'bg-brand-secondary text-white shadow-lg' 
-                        : 'text-text-secondary hover:text-white hover:bg-slate-700'
-                    }`}
-                 >
-                    {tab === 'plan' && 'Quarterly Plan'}
-                    {tab === 'weekly' && 'Weekly Planning'}
-                    {tab === 'performance' && 'Performance Tracker'}
-                    {tab === 'simulator' && 'Simulator'}
-                 </button>
-             ))}
+        {/* Navigation Tabs - Scrollable on mobile */}
+        <div className="sticky top-[60px] z-40 bg-background/95 backdrop-blur-xl pt-2 pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:bg-transparent border-b border-slate-800 md:border-none">
+            <div className="flex overflow-x-auto space-x-1 bg-slate-800/50 p-1 rounded-lg w-full md:w-fit no-scrollbar snap-x snap-mandatory">
+                 {(['plan', 'weekly', 'performance', 'simulator'] as const).map(tab => (
+                     <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`flex-shrink-0 snap-center px-6 py-2 rounded-md text-sm font-bold transition-all whitespace-nowrap ${
+                            activeTab === tab 
+                            ? 'bg-brand-secondary text-white shadow-lg' 
+                            : 'text-text-secondary hover:text-white hover:bg-slate-700'
+                        }`}
+                     >
+                        {tab === 'plan' && 'Quarterly Plan'}
+                        {tab === 'weekly' && 'Weekly Planning'}
+                        {tab === 'performance' && 'Performance Tracker'}
+                        {tab === 'simulator' && 'Simulator'}
+                     </button>
+                 ))}
+            </div>
         </div>
 
-        <div className="min-h-[600px]">
+        <div className="min-h-[600px] pb-12 px-4 md:px-0">
             {activeTab === 'plan' && (
                 <div className="space-y-6 animate-fadeIn">
                      <div>
-                        <h2 className="text-3xl font-bold text-brand-light">Quarterly Strategic Plan</h2>
-                        <p className="text-text-secondary mt-1">Define overall business value targets and derive unit goals based on conversion ratios.</p>
+                        <h2 className="text-2xl md:text-3xl font-bold text-brand-light">Quarterly Strategic Plan</h2>
+                        <p className="text-text-secondary mt-1 text-sm md:text-base">Define overall business value targets and derive unit goals based on conversion ratios.</p>
                     </div>
                     <QuarterlyPlan 
                         plan={businessPlan} 
@@ -184,10 +186,10 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
 
             {activeTab === 'performance' && (
                 <div className="space-y-6 animate-fadeIn">
-                    <div className="flex justify-between items-end">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-2">
                          <div>
-                            <h2 className="text-3xl font-bold text-brand-light">Performance Tracker</h2>
-                            <p className="text-text-secondary mt-1">Week-on-Week analysis of Targets vs Achieved. Yellow cells are editable inputs.</p>
+                            <h2 className="text-2xl md:text-3xl font-bold text-brand-light">Performance Tracker</h2>
+                            <p className="text-text-secondary mt-1 text-sm md:text-base">Week-on-Week analysis of Targets vs Achieved. Yellow cells are editable inputs.</p>
                         </div>
                     </div>
                     <PerformanceTracker 
@@ -200,8 +202,8 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
             {activeTab === 'simulator' && (
                 <div className="space-y-8 animate-fadeIn">
                      <div>
-                        <h2 className="text-3xl font-bold text-brand-light">Forecasting Simulator</h2>
-                        <p className="text-text-secondary mt-1">Build your weekly media plan by platform. Optimize for budget and CPL to hit lead targets.</p>
+                        <h2 className="text-2xl md:text-3xl font-bold text-brand-light">Forecasting Simulator</h2>
+                        <p className="text-text-secondary mt-1 text-sm md:text-base">Build your weekly media plan by platform. Optimize for budget and CPL to hit lead targets.</p>
                     </div>
                     
                     <ForecastingSimulator 
@@ -211,13 +213,13 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
                     />
 
                     {/* AI Analysis Section */}
-                    <div className="border-t border-slate-700 pt-8">
-                        <div className="flex items-center justify-between mb-6">
-                             <h3 className="text-2xl font-bold text-brand-light flex items-center">
+                    <div className="border-t border-slate-700 pt-8 mb-12">
+                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
+                             <h3 className="text-xl md:text-2xl font-bold text-brand-light flex items-center">
                                 <WandIcon className="w-6 h-6 mr-3 text-brand-secondary" />
                                 AI Strategic Advisor
                              </h3>
-                             <div className="flex items-center gap-3">
+                             <div className="flex items-center gap-3 bg-slate-800 p-2 rounded-lg">
                                 <span className="text-sm text-text-secondary">Thinking Mode</span>
                                 <input 
                                     type="checkbox" 
@@ -231,7 +233,7 @@ export const ProjectDeepDiveView: React.FC<ProjectDeepDiveViewProps> = ({ projec
                         <button
                             onClick={handleGenerateAIAnalysis}
                             disabled={isLoading || !forecastPlan}
-                            className="w-full py-4 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-lg font-bold text-lg text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full py-4 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-lg font-bold text-lg text-white shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-98"
                         >
                             {isLoading ? 'Analyzing Scenario...' : 'Analyze Forecast with AI'}
                         </button>
