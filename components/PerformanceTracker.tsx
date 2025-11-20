@@ -144,25 +144,36 @@ export const PerformanceTracker: React.FC<PerformanceTrackerProps> = ({ data, on
                             {renderCell(`₹${totalTargets.spends.toLocaleString()}`, 'bg-blue-900/30 font-bold')}
                         </tr>
                         <tr>
-                            <td className="sticky left-[150px] z-10 bg-blue-900/20 p-2 text-xs text-blue-200/70 border-r border-slate-600 shadow-md">All-in Spends</td>
-                            {enrichedData.map((w, i) => renderCell(`₹${Math.round(w.targets.allInSpends).toLocaleString()}`, 'bg-blue-900/10 text-text-secondary'))}
+                            <td className="sticky left-[150px] z-10 bg-blue-900/20 p-2 text-xs text-blue-200/70 border-r border-slate-600 shadow-md">Total Region Spends</td>
+                            {enrichedData.map((w, i) => renderCell(`₹${w.cTargets.spends.toLocaleString()}`, 'bg-blue-900/10 text-text-secondary'))}
+                            {renderCell(`₹${totalTargets.spends.toLocaleString()}`, 'bg-blue-900/30 font-bold')}
+                        </tr>
+                        <tr>
+                            <td className="sticky left-[150px] z-10 bg-blue-900/20 p-2 text-xs font-medium text-blue-100 border-r border-slate-600 shadow-md">All-in Spends</td>
+                            {enrichedData.map((w, i) => renderCell(`₹${Math.round(w.targets.allInSpends).toLocaleString()}`, 'bg-blue-900/10'))}
+                            {renderCell(`₹${Math.round(totalTargets.allInSpends).toLocaleString()}`, 'bg-blue-900/30 font-bold')}
+                        </tr>
+                        <tr>
+                            <td className="sticky left-[150px] z-10 bg-blue-900/20 p-2 text-xs text-blue-200/70 border-r border-slate-600 shadow-md">Total All-in Spends</td>
+                            {enrichedData.map((w, i) => renderCell(`₹${Math.round(w.cTargets.allInSpends).toLocaleString()}`, 'bg-blue-900/10 text-text-secondary'))}
                             {renderCell(`₹${Math.round(totalTargets.allInSpends).toLocaleString()}`, 'bg-blue-900/30 font-bold')}
                         </tr>
                         <tr className="h-4 bg-background"><td colSpan={15}></td></tr>
 
                         {/* === ACHIEVED SECTION (YELLOW) === */}
-                        <tr><td rowSpan={8} className="sticky left-0 z-10 bg-yellow-600/20 p-3 font-bold text-yellow-500 border-r border-slate-600 align-top">Achieved</td></tr>
+                        <tr><td rowSpan={9} className="sticky left-0 z-10 bg-yellow-600/20 p-3 font-bold text-yellow-500 border-r border-slate-600 align-top">Achieved</td></tr>
                         
                         {/* Leads Achieved (Editable) */}
                         <tr>
-                            <td className="sticky left-[150px] z-10 bg-yellow-600/10 p-2 text-xs font-bold text-yellow-100 border-r border-slate-600 shadow-md">Leads (Input)</td>
+                            <td className="sticky left-[150px] z-10 bg-yellow-600/20 p-2 text-xs font-bold text-yellow-100 border-r border-slate-600 shadow-md">Leads (Editable)</td>
                             {enrichedData.map((w, i) => (
-                                <td key={i} className="p-0 border-r border-slate-600/50 bg-yellow-600/5">
+                                <td key={i} className="p-0 border-r border-slate-600/50 bg-yellow-900/10 hover:bg-yellow-900/30 transition-colors">
                                     <input 
                                         type="number" 
                                         value={w.achieved.leads || ''} 
+                                        placeholder="-"
                                         onChange={(e) => handleChange(i, 'leads', e.target.value)}
-                                        className="w-full h-full bg-transparent text-right p-2 text-yellow-100 focus:outline-none focus:bg-yellow-600/20"
+                                        className="w-full h-full bg-transparent text-right p-2 text-yellow-100 font-bold placeholder-slate-600 focus:outline-none focus:bg-yellow-900/40 focus:ring-2 focus:ring-yellow-500/50 inset-0"
                                     />
                                 </td>
                             ))}
@@ -176,14 +187,15 @@ export const PerformanceTracker: React.FC<PerformanceTrackerProps> = ({ data, on
 
                         {/* AP Achieved (Editable) */}
                         <tr>
-                            <td className="sticky left-[150px] z-10 bg-yellow-600/10 p-2 text-xs font-bold text-yellow-100 border-r border-slate-600 shadow-md">AP (Input)</td>
+                            <td className="sticky left-[150px] z-10 bg-yellow-600/20 p-2 text-xs font-bold text-yellow-100 border-r border-slate-600 shadow-md">AP (Editable)</td>
                             {enrichedData.map((w, i) => (
-                                <td key={i} className="p-0 border-r border-slate-600/50 bg-yellow-600/5">
+                                <td key={i} className="p-0 border-r border-slate-600/50 bg-yellow-900/10 hover:bg-yellow-900/30 transition-colors">
                                     <input 
                                         type="number" 
                                         value={w.achieved.appointments || ''} 
+                                        placeholder="-"
                                         onChange={(e) => handleChange(i, 'appointments', e.target.value)}
-                                        className="w-full h-full bg-transparent text-right p-2 text-yellow-100 focus:outline-none focus:bg-yellow-600/20"
+                                        className="w-full h-full bg-transparent text-right p-2 text-yellow-100 font-bold placeholder-slate-600 focus:outline-none focus:bg-yellow-900/40 focus:ring-2 focus:ring-yellow-500/50 inset-0"
                                     />
                                 </td>
                             ))}
@@ -197,14 +209,15 @@ export const PerformanceTracker: React.FC<PerformanceTrackerProps> = ({ data, on
 
                         {/* AD Achieved (Editable) */}
                         <tr>
-                            <td className="sticky left-[150px] z-10 bg-yellow-600/10 p-2 text-xs font-bold text-yellow-100 border-r border-slate-600 shadow-md">AD (Input)</td>
+                            <td className="sticky left-[150px] z-10 bg-yellow-600/20 p-2 text-xs font-bold text-yellow-100 border-r border-slate-600 shadow-md">AD (Editable)</td>
                             {enrichedData.map((w, i) => (
-                                <td key={i} className="p-0 border-r border-slate-600/50 bg-yellow-600/5">
+                                <td key={i} className="p-0 border-r border-slate-600/50 bg-yellow-900/10 hover:bg-yellow-900/30 transition-colors">
                                     <input 
                                         type="number" 
                                         value={w.achieved.walkins || ''} 
+                                        placeholder="-"
                                         onChange={(e) => handleChange(i, 'walkins', e.target.value)}
-                                        className="w-full h-full bg-transparent text-right p-2 text-yellow-100 focus:outline-none focus:bg-yellow-600/20"
+                                        className="w-full h-full bg-transparent text-right p-2 text-yellow-100 font-bold placeholder-slate-600 focus:outline-none focus:bg-yellow-900/40 focus:ring-2 focus:ring-yellow-500/50 inset-0"
                                     />
                                 </td>
                             ))}
@@ -218,17 +231,23 @@ export const PerformanceTracker: React.FC<PerformanceTrackerProps> = ({ data, on
 
                         {/* Spends Achieved (Editable) */}
                         <tr>
-                            <td className="sticky left-[150px] z-10 bg-yellow-600/10 p-2 text-xs font-bold text-yellow-100 border-r border-slate-600 shadow-md">Region Spends (Input)</td>
+                            <td className="sticky left-[150px] z-10 bg-yellow-600/20 p-2 text-xs font-bold text-yellow-100 border-r border-slate-600 shadow-md">Region Spends (Edit)</td>
                             {enrichedData.map((w, i) => (
-                                <td key={i} className="p-0 border-r border-slate-600/50 bg-yellow-600/5">
+                                <td key={i} className="p-0 border-r border-slate-600/50 bg-yellow-900/10 hover:bg-yellow-900/30 transition-colors">
                                     <input 
                                         type="number" 
                                         value={w.achieved.spends || ''} 
+                                        placeholder="-"
                                         onChange={(e) => handleChange(i, 'spends', e.target.value)}
-                                        className="w-full h-full bg-transparent text-right p-2 text-yellow-100 focus:outline-none focus:bg-yellow-600/20"
+                                        className="w-full h-full bg-transparent text-right p-2 text-yellow-100 font-bold placeholder-slate-600 focus:outline-none focus:bg-yellow-900/40 focus:ring-2 focus:ring-yellow-500/50 inset-0"
                                     />
                                 </td>
                             ))}
+                            {renderCell(`₹${totalAchieved.spends.toLocaleString()}`, 'bg-yellow-600/20 font-bold')}
+                        </tr>
+                        <tr>
+                            <td className="sticky left-[150px] z-10 bg-yellow-600/10 p-2 text-xs text-yellow-200/70 border-r border-slate-600 shadow-md">Total Spends</td>
+                            {enrichedData.map((w, i) => renderCell(`₹${w.cAchieved.spends.toLocaleString()}`, 'bg-yellow-600/5 text-text-secondary'))}
                             {renderCell(`₹${totalAchieved.spends.toLocaleString()}`, 'bg-yellow-600/20 font-bold')}
                         </tr>
                          <tr className="h-4 bg-background"><td colSpan={15}></td></tr>
@@ -257,7 +276,6 @@ export const PerformanceTracker: React.FC<PerformanceTrackerProps> = ({ data, on
                              {renderCell(`${(totalAchieved.l2w || 0).toFixed(2)}%`, 'bg-red-900/30 font-bold')}
                         </tr>
                          <tr>
-                             <td className="sticky left-0 z-10 bg-red-900/30 p-3 font-bold text-red-300 border-r border-slate-600"></td>
                             <td className="sticky left-[150px] z-10 bg-red-900/20 p-2 text-xs font-medium text-red-100 border-r border-slate-600 shadow-md">L2AP %</td>
                             {enrichedData.map((w, i) => renderCell(`${w.ratios.l2ap.toFixed(2)}%`, 'bg-red-900/10'))}
                              {renderCell(`${(totalAchieved.l2ap || 0).toFixed(2)}%`, 'bg-red-900/30 font-bold')}
